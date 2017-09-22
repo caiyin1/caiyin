@@ -1,0 +1,43 @@
+*.o
+*.obj
+*.swp
+*.exe
+*.dll
+*.pdb
+*.class
+
+############
+# VC6
+############
+*.dbg
+*.opt
+*.ncb
+*.plg
+
+############
+# folder
+############
+bin
+obj
+Debug
+Release
+
+############
+# temp file
+############
+~*
+*.log
+*.cmm
+*.men
+*.tmp
+*.swp
+*.swo
+*.dsp
+*.aps
+*.clw
+ReadMe.txt
+*.ico
+*.rar
+
+
+
