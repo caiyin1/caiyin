@@ -5,14 +5,14 @@
 class PaiGows : public cocos2d::Node
 {
 public:
-	// 牌上的点的数据
+	// pai dao data
 	class Dot {
 	public:
-		// X 轴百分比
+		// X axis rate
 		float m_fXRate;
-		// Y 轴百分比
+		// Y axis reate
 		float m_fYRate;
-		// 色彩，0 - 白色，1 - 红色
+		// color，0 - white，1 - red
 		int m_nColor;
 
 		Dot(float fXRate, float fYRate, int nColor)
@@ -23,26 +23,33 @@ public:
 		}
 	};
 
-	// 创建牌九的牌对象
+	// create PaiGows object
 	static PaiGows* create(int nNum);
 	/**
-	 * @breif xxxx
-	 * @param strxxx
+	 * @breif create PaiGows object 
+	 * @param strBackgroundImage  Pai Back ground Image  file position
+	 * @param strDatRedImage  pai red dot  Image file position
+	 * @param strDotwhiteImage pai white dot Image file Position
+	 * @param pai Id
+	 * @return PaiGows 
 	 */
 	static PaiGows* create(const std::string& strBackgroundImage, const std::string& strDotRedImage, const std::string& strDotWhiteImage, int nNum);
 
 	static void setImages(const std::string& strBackgroundImage, const std::string& strDotRedImage, const std::string& strDotWhiteImage);
-	// 设置牌内容
+   /**
+	 * @breif set pai type
+	 * @param nNum pai Id
+	 */ 
 
 	void setSurface(int nNum);
 	
 private:
-	// 初始化数据函数
+	// init data fun
 	/**
-	 * @brief xxxxxx
-	 * @param strBackgroundImage xxxxx
-	 * @param strDotRedImage xxxx
-	 * @param strDotWhiteImage xxx
+	 * @brief pai background Image and dot Image file Position add PaiGows 
+	 * @param strBackgroundImage  Pai Back ground Image  file position
+	 * @param strDatRedImage  pai red dot  Image file position
+	 * @param strDotwhiteImage pai white dot Image file Position
 	 * @return bool xxxxxx
 	 */
 	bool initWithData(const std::string& strBackgroundImage, const std::string& strDotRedImage, const std::string& strDotWhiteImage, int nNum);
@@ -50,25 +57,25 @@ private:
 	bool initWithData(int nNum);
 
 private:
-	// 牌背的图片地址
+	// Back ground Image file position
 	static std::string s_strBackgroundImage;
-	// 牌的红点的图片
+	// red dot image file position
 	static std::string s_strDotRedImage;
-	// 牌的白点的图片
+	// white dot file position
 	static std::string s_strDotWhiteImage;
 
 private:
 	//Value data;
 
-	// 牌的名称
+	// pai name
 	std::string m_strName;
-	// 牌的点的数据
+	// pai dot information
 	std::vector<PaiGows::Dot> m_vPoint;
-	// 点数
+	// do num
 	int m_nNum;
 
 private:
-	// 牌的背景图片
+	// pai backGround Image 
 	cocos2d::Sprite* m_pSpriteBg = nullptr;
 };
 

@@ -13,7 +13,7 @@ string PaiGows::s_strBackgroundImage = "";
 string PaiGows::s_strDotRedImage = "";
 string PaiGows::s_strDotWhiteImage = "";
 
-//全局变量，设定所有牌型信息
+//global value，set pai  information
 const static std::unordered_map<int, std::vector<PaiGows::Dot* >* > g_s_paigow_Data{
 	//tian 
 	std::make_pair(0, new std::vector<PaiGows::Dot* >{
@@ -29,21 +29,21 @@ const static std::unordered_map<int, std::vector<PaiGows::Dot* >* > g_s_paigow_D
 		MakeDot(0.50f, 0.90f, 1),
 		MakeDot(0.50f, 0.10f, 1)
 	}),
-	//人
+	//people
 	std::make_pair(2, new std::vector<PaiGows::Dot*>{
 			MakeDot(0.25f, 0.88f, 1), MakeDot(0.75f, 0.88f, 1),
 			MakeDot(0.25f, 0.62f, 1), MakeDot(0.75f, 0.62f, 1),
 			MakeDot(0.25f, 0.37f, 1), MakeDot(0.75f, 0.37f, 1),
 			MakeDot(0.25f, 0.11f, 1), MakeDot(0.75f, 0.11f, 1)
 	}),
-	//鹅
+	//goose
 	std::make_pair(3, new std::vector<PaiGows::Dot*>{
 				MakeDot(0.75f, 0.90f, 0),
 				MakeDot(0.50f, 0.74f, 0),
 				MakeDot(0.25f, 0.58f, 0),
 				MakeDot(0.50f, 0.10f, 1)
 		}),
-	//梅
+	//mei
 	std::make_pair(4, new std::vector<PaiGows::Dot*>{
 		MakeDot(0.25f, 0.90f, 0), MakeDot(0.75f, 0.90f, 0),
 		MakeDot(0.50f, 0.74f, 0),
@@ -52,7 +52,7 @@ const static std::unordered_map<int, std::vector<PaiGows::Dot* >* > g_s_paigow_D
 		MakeDot(0.50f, 0.26f, 0),
 		MakeDot(0.25f, 0.10f, 0), MakeDot(0.75f, 0.10f, 0)
 	}),
-	//长三
+	//long  three
 	std::make_pair(5, new std::vector<PaiGows::Dot*>{
 		MakeDot(0.50f, 0.90f, 0),
 		MakeDot(0.50f, 0.70f, 0),
@@ -61,13 +61,13 @@ const static std::unordered_map<int, std::vector<PaiGows::Dot* >* > g_s_paigow_D
 		MakeDot(0.50f, 0.10f, 0)
 	}),
 	
-	//板凳
+	//bench
 	std::make_pair(6, new std::vector<PaiGows::Dot*>{
 		MakeDot(0.25f, 0.90f, 0), MakeDot(0.75f, 0.90f, 0),
 		MakeDot(0.25f, 0.10f, 0), MakeDot(0.75f, 0.10f, 0)
 	}),
 	
-	//斧头
+	//Axc
 	std::make_pair(7, new std::vector<PaiGows::Dot*>{
 		MakeDot(0.25f, 0.90f, 0), MakeDot(0.75f, 0.90f, 0),
 		MakeDot(0.50f, 0.74f, 0),
@@ -188,28 +188,29 @@ const static std::unordered_map<int, std::vector<PaiGows::Dot* >* > g_s_paigow_D
 
 static void addPoint(Node* parent, int nNum, const std::string& strDotRed, const std::string& strDotWhite)
 {
-	/*auto iter = g_s_paigow_Data.find(nNum);
-	if (iter == g_s_paigow_Data.end()) return;*/
-
-
-	auto pvDotData = g_s_paigow_Data.at(nNum);	
-	//获取背景尺寸
-	auto parentSize = parent->getContentSize();
-	for (auto pDotData : iter)
+	auto iter = g_s_paigow_Data.find(nNum);
+	if (iter == g_s_paigow_Data.end()) return;
+	do
 	{
-		auto pDotNode = Sprite::create(pDotData->m_nColor == 0 ? strDotWhite : strDotRed);
-		pDotNode->setPosition(pDotData->m_fXRate * parentSize.width, pDotData->m_fYRate * parentSize.height);
-		parent->addChild(pDotNode);
-	}
+		//get BackGround size
+		auto parentSize = parent->getContentSize();
+		for (auto pDotData : *iter->second)
+		{
+			auto pDotNode = Sprite::create(pDotData->m_nColor == 0 ? strDotWhite : strDotRed);
+			pDotNode->setPosition(pDotData->m_fXRate * parentSize.width, pDotData->m_fYRate * parentSize.height);
+			parent->addChild(pDotNode);
+		}
+
+	} while (0);
 
 }
 
 
 
-//PaiGows* PaiGows::create(int nNum)
-//{
-//
-//}
+PaiGows* PaiGows::create(int nNum)
+{
+	return create(s_strBackgroundImage, s_strDotRedImage, s_strDotWhiteImage, nNum);
+}
 
 PaiGows* PaiGows::create(const std::string& strBackgroundImage, const std::string& strDotRedImage, const std::string& strDotWhiteImage, int nNum)
 {
@@ -243,11 +244,9 @@ bool PaiGows::initWithData(const std::string& strBackgroundImage, const std::str
 		setAnchorPoint(Vec2(0.5, 0.5));
 		m_pSpriteBg->setPosition(_contentSize.width * 0.5, _contentSize.height * 0.5);
 		addChild(m_pSpriteBg);
-		// 添加点的信息
-		if (nNum <= 20 && nNum >= 0)
-		{
-			addPoint(m_pSpriteBg, nNum, strDotRedImage, strDotWhiteImage);
-		}
+		// add dot information
+	
+		addPoint(m_pSpriteBg, nNum, strDotRedImage, strDotWhiteImage);
 		
 		bRet = true;
 		//set Anchor
@@ -262,14 +261,12 @@ void PaiGows::setSurface(int nNum)
 	do
 	{
 		CC_BREAK_IF(!m_pSpriteBg);
-		/*CC_BREAK_IF(!s_strDotRedImage);
-		CC_BREAK_IF(!s_strDotWhiteImage);*/
+		
 		
 		m_pSpriteBg->removeAllChildren();
-		if (nNum <= 20 && nNum >= 0)
-		{
-			addPoint(m_pSpriteBg, nNum, s_strDotRedImage, s_strDotWhiteImage);
-		}
+	
+		addPoint(m_pSpriteBg, nNum, s_strDotRedImage, s_strDotWhiteImage);
+		
 	} while (0);
 }
 

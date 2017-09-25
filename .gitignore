@@ -38,6 +38,13 @@ Release
 ReadMe.txt
 *.ico
 *.rar
+cocos2d
+Debug.win32
+Release.win32
+*.sdf
+*.vcxproj.user
+*.vcproj.filters
+*.v12.suo
 
 
 
