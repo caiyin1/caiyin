@@ -48,41 +48,41 @@ bool HelloWorld::init()
 	addChild(pBg);
 
 	auto p = PaiGow::create("PaiGow/Brank.png", "PaiGow/Red.png", "PaiGow/White.png", 1, true);
-	//if (p)
-	//{
-	//	p->setTag(100);
-	//	//p->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
-	//	 p->setPosition(_contentSize*0.5f);
+	if (p)
+	{
+		p->setTag(100);
+		//p->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
+		 p->setPosition(_contentSize*0.5f);
 
-	//	const auto& size = p->getContentSize();
-	//	CCLOG("size: %f, %f", size.width, size.height);
-	//	addChild(p);
+		const auto& size = p->getContentSize();
+		CCLOG("size: %f, %f", size.width, size.height);
+		addChild(p);
+	}
+
+	/*auto pLabel = Label::createWithSystemFont("Hello", "", 60);
+	pLabel->setPosition(_contentSize * 0.5f);
+	addChild(pLabel);*/
+	
+	//Vector<PaiGow *> spritepais;
+	//for (auto i = 0; i <= 20; i++)
+	//{
+	//	log("%d", i);
+	//	auto spritepai = PaiGow::create("PaiGow/Brank.png", "PaiGow/Red.png", "PaiGow/White.png", i);
+	//	spritepais.pushBack(spritepai);
 	//}
 
-	//auto pLabel = Label::createWithSystemFont("Hello", "", 60);
-	//pLabel->setPosition(_contentSize * 0.5f);
-	//addChild(pLabel);
-	
-	Vector<PaiGow *> spritepais;
-	for (auto i = 0; i <= 20; i++)
-	{
-		log("%d", i);
-		auto spritepai = PaiGow::create("paigow/brank.png", "paigow/red.png", "paigow/white.png", i, true);
-		spritepais.pushBack(spritepai);
-	}
 
+	//int i = 0;
+	//for (auto sprite : spritepais)
+	//{
+	//	sprite->setScale(0.47f);
+	//	sprite->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
+	//	sprite->setPosition(Vec2((visibleSize.width - sprite->getContentSize().width * 0.5f * 7) / 2 + sprite->getContentSize().width *0.50f * (i % 7) ,
+	//							visibleSize.height - (sprite->getContentSize().height * 0.50f * (int)(i / 7 ))));
+	//	addChild(sprite);
+	//	i++;
 
-	int i = 0;
-	for (auto sprite : spritepais)
-	{
-		sprite->setScale(0.47f);
-		sprite->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
-		sprite->setPosition(Vec2((visibleSize.width - sprite->getContentSize().width * 0.5f * 7) / 2 + sprite->getContentSize().width *0.50f * (i % 7) ,
-								visibleSize.height - (sprite->getContentSize().height * 0.50f * (int)(i / 7 ))));
-		addChild(sprite);
-		i++;
-
-	}
+	//}
    
     return true;
 }
@@ -95,8 +95,13 @@ void HelloWorld::menuCloseCallback(Ref* pSender)
 	
 	if (p)
 	{
-		if (nNum > 20) nNum = 0;
+		if (nNum > 21) nNum = 0;
 		p->setSurface(nNum++, nNum % 2);
+		if (nNum % 3)
+		{
+			p->setHighLight("White.png");
+		}
+		
 	}
     //Close the cocos2d-x game scene and quit the application
 //    Director::getInstance()->end();
