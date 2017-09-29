@@ -1,7 +1,5 @@
 #include "HelloWorldScene.h"
 #include "SimpleAudioEngine.h"
-#include "PaiGow/PaiGow.h"
-using namespace cocos2d;
 
 USING_NS_CC;
 
@@ -43,72 +41,40 @@ bool HelloWorld::init()
 
     /////////////////////////////
     // 3. add your codes below...
-	//Ìí¼Ó±³¾°»­²¼
-	auto pBg = LayerColor::create(Color4B::BLUE, _contentSize.width, _contentSize.height);
-	addChild(pBg);
 
-	auto p = PaiGow::create("PaiGow/Brank.png", "PaiGow/Red.png", "PaiGow/White.png", 1, true);
-	if (p)
-	{
-		p->setTag(100);
-		//p->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
-		 p->setPosition(_contentSize*0.5f);
+    // add a label shows "Hello World"
+    // create and initialize a label
+    
+    auto label = Label::createWithTTF("Hello World", "fonts/Marker Felt.ttf", 24);
+    
+    // position the label on the center of the screen
+    label->setPosition(Vec2(origin.x + visibleSize.width/2,
+                            origin.y + visibleSize.height - label->getContentSize().height));
 
-		const auto& size = p->getContentSize();
-		CCLOG("size: %f, %f", size.width, size.height);
-		addChild(p);
-	}
+    // add the label as a child to this layer
+    this->addChild(label, 1);
 
-	/*auto pLabel = Label::createWithSystemFont("Hello", "", 60);
-	pLabel->setPosition(_contentSize * 0.5f);
-	addChild(pLabel);*/
-	
-	//Vector<PaiGow *> spritepais;
-	//for (auto i = 0; i <= 20; i++)
-	//{
-	//	log("%d", i);
-	//	auto spritepai = PaiGow::create("PaiGow/Brank.png", "PaiGow/Red.png", "PaiGow/White.png", i);
-	//	spritepais.pushBack(spritepai);
-	//}
+    // add "HelloWorld" splash screen"
+    auto sprite = Sprite::create("HelloWorld.png");
 
+    // position the sprite on the center of the screen
+    sprite->setPosition(Vec2(visibleSize.width/2 + origin.x, visibleSize.height/2 + origin.y));
 
-	//int i = 0;
-	//for (auto sprite : spritepais)
-	//{
-	//	sprite->setScale(0.47f);
-	//	sprite->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
-	//	sprite->setPosition(Vec2((visibleSize.width - sprite->getContentSize().width * 0.5f * 7) / 2 + sprite->getContentSize().width *0.50f * (i % 7) ,
-	//							visibleSize.height - (sprite->getContentSize().height * 0.50f * (int)(i / 7 ))));
-	//	addChild(sprite);
-	//	i++;
-
-	//}
-   
+    // add the sprite as a child to this layer
+    this->addChild(sprite, 0);
+    
     return true;
 }
 
 
 void HelloWorld::menuCloseCallback(Ref* pSender)
 {
-	static int nNum = 0;
-	auto p = dynamic_cast<PaiGow*>(getChildByTag(100));
-	
-	if (p)
-	{
-		if (nNum > 21) nNum = 0;
-		p->setSurface(nNum++, nNum % 2);
-		if (nNum % 3)
-		{
-			p->setHighLight("White.png");
-		}
-		
-	}
     //Close the cocos2d-x game scene and quit the application
-//    Director::getInstance()->end();
-//
-//    #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
-//    exit(0);
-//#endif
+    Director::getInstance()->end();
+
+    #if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS)
+    exit(0);
+#endif
     
     /*To navigate back to native iOS screen(if present) without quitting the application  ,do not use Director::getInstance()->end() and exit(0) as given above,instead trigger a custom event created in RootViewController.mm as below*/
     
