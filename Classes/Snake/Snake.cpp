@@ -32,6 +32,11 @@ bool Snake::init(int nNum)
 			setContentSize(Size(20, 27));
 			setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 			break;
+		case 2:
+			drawSolidRect(Vec2(0, 0), Vec2(20, 20), Color4F(1, 0, 0, 1));
+			setContentSize(Size(20, 20));
+			setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+			break;
 		case 3:
 			drawDot(Vec2(0, 0), 5, Color4F(1, 0, 0, 1));
 			setContentSize(Size(10, 10));
@@ -39,7 +44,7 @@ bool Snake::init(int nNum)
 			break;
 		}
 		
-		CCLOG(" x = %f , y = %f", _contentSize.width, _contentSize.height);
+		CCLOG("Snake : x = %f , y = %f", _contentSize.width, _contentSize.height);
 		bRet = true;
 	} while (0);
 	return bRet;
