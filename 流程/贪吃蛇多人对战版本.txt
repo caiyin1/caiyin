@@ -1,0 +1,60 @@
+﻿封装通用的socket类
+
+
+Client：
+1. 输入IP和用户名点击登录 登录失败不跳转,登录成功跳转到游戏准备界面。发送
+{}
+接收一个数据包
+{int nMessageHead,
+ int nPlayerID}
+2. 游戏准备界面点击 开始(准备)。发送一个
+{int nHeadMessage,
+ int nPlayerId,
+ int nDirection} 
+ (nHeadMessage 1 代表准备，2代表方向控制，0代表退出, nDirection 0代表不转动方向)
+											
+3. 开启一个线程循环接收服务端发来的数据
+{int nMessageLen,
+ int MessageHead,
+ int Dotx, int Doty,
+ int nSnakerNumber,
+ int nPlayerOneID,
+ int nDirectionOne, 
+ int nSnakeOneLen, 
+ int x, int y......, 
+ int nPlayerTweId,
+ int nDirectionTwe, 
+ int nSnakeTweLen, 
+ int x, int y....}
+5.  经过处理后得到
+{int nMessageLen, 
+ int MessageHead,
+ int Dotx, int Doty,
+ int nSnakerNumber,
+ int nPlayerOneID,
+ int nDirectionOne,
+ int nSnakeOneLen,
+ std::vector<Vec2> SnakeOne,
+ int nPlayerTweIDn,
+ int nDirectionTwe, 
+ int nSnakeTweLenm std::vector<Vec2> SnakeTwe, .....} 
+然后储存到任务队列
+6. 主线程定时器定时器刷新 任务队列 是否为空，有就拉取任务处理。
+7. 方向控件 点击发送 改变方向的请求。 {int nMessageHead,
+									   int nPlayerId, 
+									   int nDirection} 
+
+
+
+
+server:
+1. 开启一个线程处理连接状态的   连接成功创建玩家ID 让后储存到 std::nordered_map<int(PlayerID), SOCKET> m_g_sockets
+2. 开启一个一个接受消息线程 Recv（）, 循环接收各个客服端的信息。接收消息装换成结构体
+{int nMessageHead, 
+ int nDirection}
+（nMessageHead 1代表准备，2 代表改变方向， 0 代表退出）
+储存到std::vector<(struct) s_TaskMessage> TaskQueue。
+3. 主线程设置一个定时器定时检测 TaskQueue 是否有内容 有则提取任务 处理。没有则不处理
+4. 另开一个定时器1秒刷新蛇的坐标然后迭代m_g_sock发送给客户端。
+
+
