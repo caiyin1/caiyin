@@ -2,7 +2,8 @@
 #define __MESSAGE_H__
 #include <iostream> 
 #include <string.h>
-#include "cocos2d.h"
+#include <WinSock2.h>
+
 
 
 
@@ -28,33 +29,13 @@
 #define HEAD_PLAYER_DIE		6
 #define HEAD_GAME_OVER		7
 #define HEAD_DIRECTION		8
+
 enum SnakeHeadDirection
 {
 	SnakeHeadUpper,
 	SnakeHeadLower,
 	SnakeHeadRight,
 	SnakeHeadLeft
-};
-
-
-/*
-* @berif 数据包结构体
-* @param nMsgId 头消息标识符
-* @param clientSock 客服端的套接字
-* @param bDeath 蛇是否碰撞
-* @param int nDirection 表示蛇头方向
-* @param vector<cocos2d::Size> Snake 蛇的位置
-*
-*/
-struct ServerMessage
-{
-	int nMsgId;
-	int nLen;
-	SOCKET clientSock;
-	bool bDeath;
-	SnakeHeadDirection nDirection;
-	cocos2d::Size DotSize;
-	std::vector<cocos2d::Size> Snake;
 };
 
 
@@ -73,7 +54,7 @@ struct ClientMessage
 	int nDirection;
 
 };
-struct TaskMsg 
+struct TaskMsg
 {
 	int nMsgHead;
 	char* pChMeg;
@@ -86,15 +67,20 @@ public:
 	struct TagMsgHead
 	{
 		int nMessageLen;
-		int nMsgID;
 		int nMessageHead;
 		char *pChMessage;
+		int nMsgID;
 	};
 	struct TagPlayerData
 	{
 		int nPlayerID;
 		int nColour;
 		std::string strPlayerName;
+	};
+	struct TagClientMsg
+	{
+		
+
 	};
 };
 

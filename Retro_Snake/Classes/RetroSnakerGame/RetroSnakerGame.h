@@ -59,6 +59,7 @@ private:
 	void scheduleTask(float at);
 public:
 	void createMutex();
+	int getHeadLen(char recBuf[], int nlen);
 private:
 	std::vector<TaskMsg* > m_Task;
 	cocos2d::Menu* m_pMenuVertical = nullptr;
