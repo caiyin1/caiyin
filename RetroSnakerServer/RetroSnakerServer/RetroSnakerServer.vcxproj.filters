@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="头文件">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Classess">
+      <UniqueIdentifier>{aaa15f3d-ea95-426a-b2c9-9c57f6af0553}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classess\RetroSnakerSocket">
+      <UniqueIdentifier>{8ed3b6b6-1c01-4ebf-b71d-0294211acc61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Classess\RetroSnaker">
+      <UniqueIdentifier>{144ed4e7-3b09-4003-bdee-9c20ba411fd8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\classess\RetroSnakerSocket\RetroSnakerServer.cpp">
+      <Filter>Classess\RetroSnakerSocket</Filter>
+    </ClCompile>
+    <ClCompile Include="..\classess\RetroSnaker\RetroSnaker.cpp">
+      <Filter>Classess\RetroSnaker</Filter>
+    </ClCompile>
+    <ClCompile Include="..\classess\RetroSnaker\main.cpp">
+      <Filter>Classess\RetroSnaker</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\classess\RetroSnakerSocket\RetroSnakerServer.h">
+      <Filter>Classess\RetroSnakerSocket</Filter>
+    </ClInclude>
+    <ClInclude Include="..\classess\RetroSnaker\RetroSnaker.h">
+      <Filter>Classess\RetroSnaker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\classess\RetroSnaker\message.h">
+      <Filter>Classess\RetroSnaker</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

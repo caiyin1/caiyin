@@ -1,6 +1,7 @@
 #include "Classes/Sign_in/Sign_In.h"
 #include "GameData/GameData.h"
 #include "GameData/message.h"
+#include "RetroSnakerGame/RetroSnakerGame.h"
 
 
 
@@ -59,10 +60,6 @@ bool SignIn::init()
 		pEditBox_name->setDelegate(this);//当前类继承CCEditBoxDelegate类    
 		pEditBox_name->setTag(101);
 		this->addChild(pEditBox_name);
-		char testss[1024];
-		sprintf_s(testss, "xxxx1234");
-		CCLOG("%s", getMessageHead(testss, 5));
-	
 	} while (0);
 	return bRet;
 }
@@ -75,7 +72,7 @@ void SignIn::MenuSignInCallBack(Ref* Spende)
 		return;
 	}
 	auto ip = client.ResolverAdress("127.0.0.1");
-	m_clientSock = client.ConnectServer(ip, 6666);
+	m_clientSock = client.ConnectServer(ip, MY_PORT);
 	if (m_clientSock == SOCKET_ERROR)
 	{
 		return;
@@ -108,7 +105,6 @@ void SignIn::editBoxTextChanged(EditBox *editBox, const std::string &text)
 	case 101:
 		CCLOG("EditBox_name changed");
 		m_name = text;
-		//auto 
 		break;
 	default:
 		break;
@@ -123,7 +119,7 @@ bool SignIn::sendSignIn()
 	int nSenBufLen = sprintf_s(senBuf, 1024, "%d%d%s", gameData->m_MsgID, 1, m_name);
 	m_SignInMsgID = gameData->m_MsgID;
 	gameData->m_MsgID++;
-	if (send(gameData->m_sockServer, senBuf, nSenBufLen, 0) == SOCKET_ERROR)
+	if (send(gameData->getSockServer(), senBuf, nSenBufLen, 0) == SOCKET_ERROR)
 	{
 		CCLOG("ERROR: send error!");
 		return false;
@@ -137,30 +133,98 @@ bool SignIn::recvPlayerData()
 	std::memset(recBuf, 0, 1024);
 	auto gameData = GameData::getInstance()->shareGlobal();
 	int nSize = 0;
-	while (nSize < sizeof(int) * 3)
+	while (nSize < sizeof(int))
 	{
 		int nLen = 0;
-		nLen = recv(gameData->m_sockServer, recBuf + nSize , 1024, 0);
+		nLen = recv(gameData->getSockServer(), recBuf + nSize , 1024, 0);
 		if (nLen < 0)
 		{
-			CCLOG("ERROR: socekt = %d , recv error ", gameData->m_sockServer);
+			CCLOG("ERROR: socekt = %d , recv error ", gameData->getSockServer());
 			return false;
 		}
 		nSize += nLen;
 	}
-	Message::MsgHead* msgHead = (Message::MsgHead *)& recBuf;
-	while (msgHead->nMessageLen > nSize)
+	int nMsgLen = getMessageLen(recBuf, sizeof(int));
+	while (nMsgLen)
 	{
 		int nLen = 0;
-		nLen = recv(gameData->m_sockServer, recBuf + nSize, 1024, 0);
+		nLen = recv(gameData->getSockServer(), recBuf + nSize, 1024, 0);
 		if (nLen < 0)
 		{
-			CCLOG("ERROR: socekt = %d , recv error ", gameData->m_sockServer);
+			CCLOG("ERROR: socekt = %d , recv error ", gameData->getSockServer());
 			return false;
 		}
 		nSize += nLen;
 	}
+	char chMsgPack[MSG_PACK_LENG] = { 0 };
+	strncpy(chMsgPack, recBuf, nMsgLen);
+	*recBuf = *DeleteMessage(recBuf, nMsgLen, nSize);
+	Message::TagMsgHead *msg = (Message::TagMsgHead*) chMsgPack;
+
+	m_RecvMutex.lock();
+	m_Task.push_back(msg);
+	m_RecvMutex.unlock();
+	gameData->setRecBuf(recBuf, nSize - nMsgLen);
 	return true;
+}
+
+int SignIn::getMessageLen(char chRecBuf[], int nHeadLen)
+{
+	char chHead[4] = {0};
+	strncpy(chHead,chRecBuf, 4);
+	return (int)chHead;
+}
+
+char* SignIn::DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen)
+{
+	for (int i = 0; nMsgLen + i <= nBufLen; i++)
+	{
+		chRecBuf[i] = chRecBuf[i + nMsgLen];
+	}
+	memset(chRecBuf + (nBufLen - nMsgLen), 0, 1024 - (nBufLen - nMsgLen));
+	return chRecBuf;
+
+
+}
+
+void SignIn::scheduleTask(float at)
+{
+	if (!isTask()) return;
+	m_RecvMutex.lock();
+	if (!isTask())
+	{
+		m_RecvMutex.unlock();
+		return;
+	}
+	auto MsgTask = *m_Task.begin(); 
+	m_Task.erase(m_Task.begin());
+	m_RecvMutex.unlock();
+	HandleTask(MsgTask);
+}
+
+bool SignIn::isTask()
+{
+	bool bRet = false;
+	do 
+	{
+		CC_BREAK_IF(m_Task.empty());
+		bRet = true;
+	} while (0);
+	return bRet;
+}
+
+void SignIn::HandleTask(Message::TagMsgHead* msg)
+{
+	if (msg->nMessageHead = HEAD_SIGN_IN)
+	{
+		Message::TagPlayerData *tagPlayerData;
+		tagPlayerData = (Message::TagPlayerData*)msg->pChMessage;
+		auto gameData = GameData::getInstance();
+		gameData->setPlayerID(tagPlayerData->nPlayerID);
+		gameData->setPlayerName(tagPlayerData->nPlayerID, tagPlayerData->strPlayerName);
+		gameData->setPlayerColour(tagPlayerData->nPlayerID, tagPlayerData->nColour);
+		Director::getInstance()->replaceScene(RetroSnakerGame::createScene());
+	}
 }
 
 //Director

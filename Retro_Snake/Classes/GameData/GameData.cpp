@@ -5,11 +5,11 @@ static GameData* s_global = nullptr;
 
 SOCKET GameData::getSockServer()
 {
-	if (m_sockServer == SOCKET_ERROR)
+	if (getSockServer() == SOCKET_ERROR)
 	{
 		return 0;
 	}
-	return m_sockServer;
+	return getSockServer();
 }
 
 void GameData::setSockServer(SOCKET sock)
@@ -60,6 +60,50 @@ void GameData::setPlayerID(int nPlayerID)
 int GameData::getPlayerID()
 {
 	return m_nPlayerID;
+}
+
+void GameData::setRecBuf(char recBuf[], int nLen)
+{
+	memset(m_recBuf, 0, MSG_PACK_LENG);
+	if (strlen(recBuf) < 0)
+	{
+		return;
+	}
+}
+
+char* GameData::getRecBuf()
+{
+	return m_recBuf;
+}
+
+void GameData::setPlayerColour(int nPlayerID, int nPlayerColour)
+{
+	m_PlayerColour.insert(std::make_pair(nPlayerID, nPlayerColour));
+}
+
+int GameData::getPlayerColour(int nPlayerID)
+{
+	auto nColour = m_PlayerColour.find(nPlayerID);
+	if (nColour == m_PlayerColour.end())
+	{
+		return -1;
+	}
+	return nColour->second;
+}
+
+void GameData::setPlayerName(int nPlayerID, const std::string& strPlayerName)
+{
+	m_PlayerName.insert(std::make_pair(nPlayerID, strPlayerName));
+}
+
+std::string GameData::getPlayerName(int nPlayerID)
+{
+	auto strRet = m_PlayerName.find(nPlayerID);
+	if (strRet == m_PlayerName.end())
+	{
+		return 0;
+	}
+	return strRet->second;
 }
 
 //Director
