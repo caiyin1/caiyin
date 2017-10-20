@@ -14,6 +14,7 @@ public:
 	SOCKET bindListen(SOCKET sock, u_int port);
 	SOCKET AcceptClinet(SOCKET sock);
 	void closeSocket(SOCKET sock);
+	bool CreateSocketInformation(SOCKET sock);
 
 };
 
