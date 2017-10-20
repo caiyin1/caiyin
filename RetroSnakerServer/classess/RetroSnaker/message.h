@@ -22,13 +22,14 @@
 
 // head message
 #define HEAD_SIGN_IN		1
-#define HEAD_PERPARE		2
+#define HEAD_READY		2
 #define HEAD_GAME_DATA		3
 #define HEAD_PLAYER_DATA	4
 #define HEAD_SNAKE_POSITION 5
 #define HEAD_PLAYER_DIE		6
 #define HEAD_GAME_OVER		7
 #define HEAD_DIRECTION		8
+
 
 enum SnakeHeadDirection
 {
@@ -68,8 +69,8 @@ public:
 	{
 		int nMessageLen;
 		int nMessageHead;
-		char *pChMessage;
 		int nMsgID;
+		char *pChMessage;
 	};
 	struct TagPlayerData
 	{

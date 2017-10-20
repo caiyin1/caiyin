@@ -3,10 +3,6 @@
 
 void main()
 {
-
-
-
-
-
+	RetroSnaker ganme;
 
 }

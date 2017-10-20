@@ -8,17 +8,25 @@
 #include "message.h"
 #include "D:\\newbie/caiyin/p_caiyin.git/RetroSnakerServer/classess/RetroSnakerSocket/RetroSnakerServer.h"
 
-
+struct m_TagPlayerData
+{
+	SOCKET sock;
+	int nColour;
+	SnakeHeadDirection SnakeDirection;
+	std::string strPlayerName;
+	char chRecvBuf[MSG_PACK_LENG];
+	int nRecvSize;
+};
 
 class RetroSnaker : public RetroSnakerServer
 {
 public:
 	RetroSnaker();
-	~RetroSnaker();
+	~RetroSnaker(){};
 	void initGame();
+
 public:
-	std::unordered_map<int, SOCKET> m_MapPlayerSock;
-	std::vector<SOCKET> m_VecSock;
+	
 private:
 	/* 
 	* @breif 等待连接线程回调函数
@@ -29,6 +37,10 @@ private:
 	* @breif 接收消息回调函数
 	*/
 	void RecvCallBack();
+	/*
+	* @breif 拆包回调 
+	*/
+	void unPackCallBack();
 
 	int getMessageLen(char chRecBuf[], int nHeadLen);
 	/*
@@ -43,11 +55,24 @@ private:
 	* @berif 定时器回调函数
 	*/
 	void TaskCallBack();
-
+	void HandleTask(Message::TagMsgHead *msg);
+	int CreatePlayerID(Message::TagMsgHead *msg);
+	
 private:
 	SOCKET m_sock;
-	std::mutex m_mutex;
+	std::mutex m_mutexSock;
+	std::mutex m_mutexRecv;
+	std::mutex m_mutexTask;
 	std::vector<Message::TagMsgHead *> m_Task;
+	u_int m_nPlayerID = 1001;
+	std::unordered_map<int, m_TagPlayerData* > m_MapPlayerData;
+	std::unordered_map<SOCKET, int> m_MapSockPlayerID;
+	/*std::unordered_map<SOCKET, m_TagPlayerData* > m_MapPlayerData*/
+	/*std::vector<SOCKET> m_VecSock;*/
+	int m_nReadyNum = 0;
+	fd_set m_fdClientSock;
+	int m_nClinetNum = 0;
+
 };
 
 #endif // __RetroSnaker_H__

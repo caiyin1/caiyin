@@ -39,8 +39,10 @@ SOCKET RetroSnakerServer::bindListen(SOCKET sock, u_int Port)
 	{
 		return 0;
 	}
+
 	u_long nonBlock = 1;
 	ioctlsocket(sock, FIONBIO, &nonBlock);
+	//CreateSocketInformation();
 	return sock;
 }
 
@@ -62,4 +64,10 @@ SOCKET RetroSnakerServer::AcceptClinet(SOCKET sock)
  	closesocket(sock);
  	WSACleanup();
  }
-  
+
+ bool RetroSnakerServer::CreateSocketInformation(SOCKET sock)
+ {
+	 
+	 return false;
+ }
+
