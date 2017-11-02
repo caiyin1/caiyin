@@ -29,8 +29,9 @@ SOCKET RetroSnakerServer::bindListen(SOCKET sock, u_int Port)
 	sockaddr_in sin;
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(Port);
-	sin.sin_addr.S_un.S_addr = inet_addr("0, 0, 0, 0");
-	if (bind(sock, (LPSOCKADDR)& sin, sizeof(sin)) == SOCKET_ERROR)
+	sin.sin_addr.S_un.S_addr = inet_addr("0.0.0.0");
+	int nSize = sizeof(sockaddr_in);
+	if (bind(sock, (sockaddr*)&sin, nSize) == SOCKET_ERROR)
 	{
 		closeSocket(sock);
 		return 0;
@@ -40,8 +41,8 @@ SOCKET RetroSnakerServer::bindListen(SOCKET sock, u_int Port)
 		return 0;
 	}
 
-	u_long nonBlock = 1;
-	ioctlsocket(sock, FIONBIO, &nonBlock);
+	/*u_long nonBlock = 1;
+	ioctlsocket(sock, FIONBIO, &nonBlock);*/
 	//CreateSocketInformation();
 	return sock;
 }
