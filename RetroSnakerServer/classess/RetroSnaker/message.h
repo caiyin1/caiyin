@@ -3,6 +3,8 @@
 #include <iostream> 
 #include <string.h>
 #include <WinSock2.h>
+#include "D:\\newbie/caiyin/p_caiyin.git/RetroSnakerServer/classess/RetroSnaker/RetroSnaker.h"
+
 
 
 
@@ -13,7 +15,11 @@
 #define MSG_PACK_LENG 1024
 #define MAX_POSX 24
 #define MAX_POSY 16
-#define MY_PORT 6000
+#define MY_PORT 6666
+/* 格子大小*/
+#define LATTICE_SIZE 20
+/*最少开始人数*/
+#define PLAYER_NUM 1
 
 #define UPPER 1
 #define LOWER 2
@@ -21,7 +27,8 @@
 #define LEFT 4
 
 // head message
-#define HEAD_SIGN_IN		1
+#define HEAD_INVALID       -1 //无消息
+#define HEAD_LOGIN		1
 #define HEAD_READY		2
 #define HEAD_GAME_DATA		3
 #define HEAD_PLAYER_DATA	4
@@ -61,27 +68,67 @@ struct TaskMsg
 	char* pChMeg;
 };
 
+// typedef struct TagSnakePosition 
+// {
+// 	/*蛇的长度*/
+// 	int nPlayerLeng;
+// 	int nPlayerID;
+// 	int nDirection;
+// 	std::vector<struct BodyPosition> snakePos;
+// };
+
 
 class Message
 {
 public:
 	struct TagMsgHead
 	{
-		int nMessageLen;
+		int nMsgLeng;
 		int nMessageHead;
 		int nMsgID;
-		char *pChMessage;
+		TagMsgHead(int msg = HEAD_INVALID)
+		{
+			nMessageHead = msg;
+		}
 	};
-	struct TagPlayerData
+	struct TagPlayerData : public  TagMsgHead
 	{
+		TagPlayerData()
+		{
+			TagMsgHead(HEAD_LOGIN);
+		}
+		int nPlayerID;
+		int nColour;
+		int nState;
+		char chStart;
+	};
+	struct TagSnakeHeadDirection : public TagMsgHead
+	{
+		TagSnakeHeadDirection()
+		{
+			TagMsgHead(HEAD_DIRECTION);
+		};
+		int nPlayerID;
+		int nDirection;
+	};
+	struct TagSendState : public TagMsgHead
+	{
+		TagSendState()
+		{
+			TagMsgHead(HEAD_READY);
+		}
+		int nPlayerID;
+		int nState;
+	};
+
+	struct TagSignIn
+	{
+		int nMessageLen;
+		int nMsgID;
+		int nMessageHead;
 		int nPlayerID;
 		int nColour;
 		std::string strPlayerName;
-	};
-	struct TagClientMsg
-	{
-		
-
 	};
 };
 
