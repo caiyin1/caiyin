@@ -42,7 +42,6 @@ bool SignIn::init()
 		SignInMenu->setPosition(_contentSize.width * 0.5f, SignInLabel->getContentSize().height * 2);
 		CC_BREAK_IF(!SignInMenu);
 		addChild(SignInMenu);
-
 		//schedule(schedule_selector(SignIn::scheduleHanle), 0.01f);
 		bRet = true;
 		auto pEditBox_name = EditBox::create(CCSizeMake(250, 50), Scale9Sprite::create("D:\\material\\Button.png"));
@@ -61,6 +60,9 @@ bool SignIn::init()
 		pEditBox_name->setTag(101);
 		this->addChild(pEditBox_name);
 		schedule(schedule_selector(SignIn::scheduleLogInState), 0.1f);
+		auto DotDraw = MakeDraw::create(3);
+		DotDraw->setPosition(Vec2(20, 40));
+		addChild(DotDraw);
 	} while (0);
 	return bRet;
 }
@@ -122,12 +124,12 @@ bool SignIn::sendSignIn()
 	sendMsg.nMessageHead = HEAD_LOGIN;
 	sendMsg.nPlayerID = 0;
 	sendMsg.nColour = -1;
-	sendMsg.nMsgLeng = sizeof(int) * 5 + 1 + m_name.size();
+	sendMsg.nMsgLeng = sizeof(int) * 6 + 1 + m_name.size();
 	sendMsg.chStart = *m_name.c_str();
 	gameData->m_MsgID++;
 	char chSendBuf[MSG_PACK_LENG] = { 0 };
-	memcpy(chSendBuf, &sendMsg, sizeof(int)* 5 + 1);
-	memcpy(chSendBuf + sizeof(int)* 5 + 1, m_name.c_str() + 1, m_name.size());
+	memcpy(chSendBuf, &sendMsg, sizeof(int)* 6 + 1);
+	memcpy(chSendBuf + sizeof(int)* 6 + 1, m_name.c_str() + 1, m_name.size() - 1);
 	if (send(gameData->getSockServer(), chSendBuf, sendMsg.nMsgLeng, 0) == SOCKET_ERROR)
 	{
 		CCLOG("ERROR: send error!");
@@ -174,8 +176,8 @@ bool SignIn::recvPlayerData()
 		}
 		 
 		char* pChPack = new char[msgHead.nMsgLeng];
+		memset(pChPack, 0, msgHead.nMsgLeng);
 		memcpy(pChPack, recvBuf, msgHead.nMsgLeng);
-	
 		makePack(msgHead, pChPack);
 		*recvBuf = *DeleteMessage(recvBuf, msgHead.nMsgLeng, nSize);
 		gameData->setRecBuf(recvBuf, nSize - msgHead.nMsgLeng);
@@ -221,7 +223,7 @@ void SignIn::scheduleLogInState(float at)
 		Director::getInstance()->replaceScene(RetroSnakerGame::createScene());
 	}
 }
-// 
+ 
 // bool SignIn::isTask()
 // {
 // 	bool bRet = false;
@@ -238,8 +240,8 @@ void SignIn::makePack(Message::TagMsgHead msg, char* pChPack)
 {
 	if (msg.nMessageHead == HEAD_LOGIN)
 	{
-		Message::TagPlayerData tagPlayerData = *(Message::TagPlayerData*) pChPack;
-		char* pChPlayerName = &tagPlayerData.chStart;
+		Message::TagPlayerData* tagPlayerData = (Message::TagPlayerData*) pChPack;
+		char* pChPlayerName = &tagPlayerData->chStart;
 		std::string strPlayerName;
 		for (; *pChPlayerName != 0; pChPlayerName++)
 		{
@@ -247,12 +249,12 @@ void SignIn::makePack(Message::TagMsgHead msg, char* pChPack)
 		}		
 		auto gameData = GameData::getInstance();
 		TagPlayerStateData playerStateData;
-		playerStateData.nColour = tagPlayerData.nColour;
-		playerStateData.nState = false;
-		playerStateData.nHead = tagPlayerData.nMessageHead;
+		playerStateData.nColour = tagPlayerData->nColour;
+		playerStateData.nState = 0;
 		playerStateData.strPlayerName = strPlayerName;
+		playerStateData.nPlayerID = tagPlayerData->nPlayerID;
 		playerStateData.pLabelName = nullptr;
 		gameData->setPlayerData(playerStateData.nPlayerID, playerStateData);
-		gameData->setPlayerID(tagPlayerData.nPlayerID);
+		gameData->setPlayerID(tagPlayerData->nPlayerID);
 	}
 }

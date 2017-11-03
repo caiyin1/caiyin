@@ -23,23 +23,22 @@ typedef struct g_TagPlayerData
 	int nSnakeDirecotion;
 	std::string strPlayerName;
 	int nRead;
-	std::vector<BodyPosition> SnakePosition;
+	std::vector<BodyPosition> vSnakePosition;
 	int nRecvSize;
 	char chRecvBuf[MSG_PACK_LENG];
 };
+
 /*
 * @breif 定时回调函数
 */
-void CALLBACK OnTimer(HWND hwnd, UINT uMsg, UINT IDEvent, DWORD DwTime);
+void CALLBACK onTimer(HWND hwnd, UINT uMsg, UINT IDEvent, DWORD DwTime);
 void CALLBACK sendPositionTimer(HWND hwnd, UINT uMsg, UINT IDEvent, DWORD DwTime);
+
 class RetroSnaker : public RetroSnakerServer
 {
 public:
-	static RetroSnaker* getInstance();
+	static RetroSnaker* GetInstance();
 	void initGame();
-
-public:
-	int m_nReadyNum = 0;
 public:
 	/*
 	* @breif 拆包回调
@@ -53,24 +52,22 @@ public:
 	* @breif 计算蛇的位置 
 	* @ return 返回发送数据包的长度
 	*/
-	int getSnakePosition(char* sendBuf);
+	int getSnakePosition(char* pSendBuf);
 
 private:
 
-	RetroSnaker(){};
-	~RetroSnaker(){};
+	RetroSnaker() {};
+	~RetroSnaker() {};
 	/* 
 	* @breif 等待连接线程回调函数
 	*/
-	void AcceptCallBack();
+	void acceptCallBack();
 	
 	/* 
 	* @breif 接收消息回调函数
 	*/
-	void RecvCallBack();
-	
+	void recvCallBack();
 
-	int getMessageLen(char chRecBuf[], int nHeadLen);
 	/*
 	* @breif 删除已经接收的数据包
 	* @param chRecBuf接收的数据
@@ -79,16 +76,14 @@ private:
 	*/
 	char* DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen);
 
-	
-	void TaskCallBack();
-	void TimerCallBack();
+	void timerCallBack();
 private:
 
-	void HandleTask(Message::TagMsgHead msg, char* pchMsg, int nPlayerID);
-	int CreatePlayerID();
+	void handleTask(Message::TagMsgHead msg, char* pChMsg, int nPlayerID);
+	int createPlayerID();
 	void initPlayer(SOCKET sock);
 	int initColour();
-	void PlayerSignIn(Message::TagPlayerData *msg, std::string strPlayerName);
+	void responseSignIn(Message::TagPlayerData *pMsg, std::string strPlayerName);
 	/*
 	* @breif 将socket放入fd_list这个结构体中 
 	*/
@@ -97,30 +92,32 @@ private:
 	/*
 	* @berif 发送玩家状态 
 	*/
-	void sendPlayerState(Message::TagSendState* Msg);
+	void sendPlayerState(Message::TagSendState* pMsg);
 	/*
 	* @breif 初始化玩家坐标;
 	* @ return 返回发送的数据包的长度
 	*/
-	int initPlayerPosition(char* sendBuf);
+	int initPlayerPosition(char* pSendBuf);
 	/*
 	* @breif 创建随机坐标 
 	*/
-	BodyPosition CreatePosition();
+	BodyPosition createPosition();
 	
 private:
+
 	SOCKET m_sock;
 	std::mutex m_mutexPlayerData;
 	std::mutex m_mutexSock;
 	std::mutex m_mutexRecv;
 	std::mutex m_mutexTask;
 
-	std::vector<Message::TagMsgHead*> m_Task;
-	u_int m_nPlayerID = 1001;
+	std::vector<Message::TagMsgHead*> m_vTask;
 	std::unordered_map<int, g_TagPlayerData*> m_MapPlayerData;
+	u_int m_nPlayerID = 1001;
 	bool m_bInitPlayerPosition = true;
 	int m_nClientNum = 0;
 	int m_nColour = 0;
+	int m_nReadyNum = 0;
 	BodyPosition m_DotPos;
 };
 #endif // __RetroSnaker_H__

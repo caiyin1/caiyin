@@ -49,11 +49,12 @@ private:
 	/*
 	* @breif 接收消息线程回调函数
 	*/
-	void ThreadRecv();
+	void threadRecv();
 	/*
 	* @breif 发送方向
 	*/
 	void sendDirection();
+
 	bool initRead();
 	/*
 	* @breif 处理玩家ID名称的回调函数
@@ -66,7 +67,7 @@ private:
 	/*
 	* @breif 发送准备请求按钮的回调函数
 	*/
-	void ReadCallBack(Ref* Spende);
+	void readCallBack(Ref* Spende);
 public:
 	int getHeadLen(char recBuf[], int nlen);
 	/*
@@ -75,17 +76,24 @@ public:
 	* @param nMsgLen上一个包的长度
 	* @param nBufLen 接收的长度（chRecBuf有用的数据）
 	*/
-	char* DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen);
+	char* deleteMessage(char chRecBuf[], int nMsgLen, int nBufLen);
 	/*
 	* @breif 拆包
 	* @param msgHead 头消息
 	* @param pChMsg 待解析的数据
 	*/
-	void unPack(Message::TagMsgHead *msgHead, char* pChMsg);
+	void unPack(Message::TagMsgHead *pMsgHead, char* pChMsg);
+
 	/*
 	* @breif 添加玩家状态数据到界面 
 	*/
 	void addPlayerData(TagPlayerStateData& Task);
+	/*
+	* @breif 设置蛇头方向 
+	*/
+	void setSnakeDirection(int nPlayerID, int nDirection);
+	void setDotPosition(Message::TagDotPosition* pMsg);
+	void setDirectionMem(int nDireciton);
 private:
 	std::vector<TaskMsg* > m_Task;
 	cocos2d::Menu* m_pMenuVertical = nullptr;
@@ -96,8 +104,8 @@ private:
 	//互斥锁
 	std::mutex m_mutexDirection;
 	int m_nPlayerNum = 1;
-	
 	cocos2d::Menu* m_pMenuRead;
+	MakeDraw* m_pDotDraw = nullptr;
 };
 
 #endif  //__RetroSnaker_Game_H__

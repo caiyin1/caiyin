@@ -22,6 +22,6 @@ void main()
 	std::thread th2(thread2);
 	th2.join();
 	th1.join();*/
-	RetroSnaker::getInstance()->initGame();
+	RetroSnaker::GetInstance()->initGame();
 
 }

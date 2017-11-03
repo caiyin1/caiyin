@@ -18,7 +18,7 @@ typedef struct TagPlayerStateData
 	int nDirection;
 	cocos2d::Label *pLabelName;
 	std::string strPlayerName;
-	std::vector<MakeDraw* > SnakeBody;
+	std::vector<MakeDraw*> SnakeBody;
 };
 typedef struct Colour3b
 {
@@ -32,7 +32,6 @@ class GameData : public cocos2d::Object
 public:
 	static GameData* getInstance();
 	bool init();
-
 	/*
 	* @breif 储存连接成功的sock
 	* @param sock 连接成功的sock
@@ -43,7 +42,7 @@ public:
 	/*
 	* @breif 记录玩家ID 和玩家名字 玩家colour
 	*/
-	void setPlayerData(int nPlayerID, TagPlayerStateData Task);
+	void setPlayerData(int nPlayerID, TagPlayerStateData task);
 	TagPlayerStateData* getPlayerData(int nPlayerID);
 	void deletePlayerData(int nPlayerID);
 	/*
@@ -68,7 +67,7 @@ public:
 	/*
 	* @breif 添加玩家初始化任务队列 
 	*/
-	void addPlayerStateTask(TagPlayerStateData);
+	void addPlayerStateTask(TagPlayerStateData msg);
 	bool isPlayerStateTask();
 	TagPlayerStateData getPlayerStateTask();
 	/*
@@ -76,17 +75,17 @@ public:
 	*/
 	void setSnakePositionTask(TagSnakePosition tagSnakePosition);
 	bool isSnakePositionTask();
-	TagSnakePosition* getSnakePositionTask();
+	TagSnakePosition getSnakePositionTask();
 public:
 	int m_MsgID;
 private:
 	std::mutex m_PlayerDataMutex;
 	
 	std::mutex m_PositionMutex;
-	std::vector<TagPlayerStateData> m_PlayerState;
+	std::vector<TagPlayerStateData> m_vPlayerState;
+	std::vector<TagSnakePosition> m_vSnakePosition;
 	std::unordered_map<int, TagPlayerStateData> m_MapPlayerData;
-	std::vector<TagSnakePosition> m_VecSnakePosition;
-	std::unordered_map<int, int> m_PlayerColour;
+	std::unordered_map<int, int> m_MapPlayerColour;
 	char m_recBuf[MSG_PACK_LENG];
 	int m_nRecvLen ;
 	int m_nPlayerID = 0;
