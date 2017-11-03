@@ -5,6 +5,7 @@
 #include<stdlib.h>
 #include "RetroSnaker.h"
 
+
 #pragma warning( disable : 4996)
 using namespace std;
 
@@ -27,9 +28,7 @@ const static std::unordered_map<int, int> g_MapColour{
 	std::make_pair(7, 16384000),
 };
 
-
-
-RetroSnaker* RetroSnaker::getInstance()
+RetroSnaker* RetroSnaker::GetInstance()
 {
 	if (s_global == NULL)
 	{
@@ -37,14 +36,11 @@ RetroSnaker* RetroSnaker::getInstance()
 		//s_global->init();
 	}
 	return s_global;
-
 }
 void RetroSnaker::initGame()
 {
-	int l = 20;
-	char* p = (char*)l;
-	int nSzie = (int)p;
-	int nLen = getMessageLen(p, 4);
+	// 初始化随机数组序列
+	srand((unsigned)time(NULL));
 	do 
 	{
 		init();
@@ -54,21 +50,22 @@ void RetroSnaker::initGame()
 		{
 			return;
 		}
-		std::thread AcceptThread(&RetroSnaker::AcceptCallBack, this);
+		std::thread acceptThread(&RetroSnaker::acceptCallBack, this);
 
-		std::thread RecvThread(&RetroSnaker::RecvCallBack, this);
+		std::thread recvThread(&RetroSnaker::recvCallBack, this);
 		
-		std::thread unPackThread(&RetroSnaker::TimerCallBack, this);
+		std::thread timerThread(&RetroSnaker::timerCallBack, this);
 		
 		//std::thread TaskThread(&RetroSnaker::TaskCallBack, this);
-		AcceptThread.join();
-		RecvThread.join();
-		unPackThread.join();
+		acceptThread.join();
+		recvThread.join();
+		timerThread.join();
 		
 	} while (0);
 }
 
-void RetroSnaker::AcceptCallBack()
+
+void RetroSnaker::acceptCallBack()
 {
 	while (m_nClientNum < FD_SETSIZE)
 	{
@@ -85,27 +82,28 @@ void RetroSnaker::AcceptCallBack()
 	}
 }
 
-void RetroSnaker::RecvCallBack()
+void RetroSnaker::recvCallBack()
 {
 	fd_set fdRead;
 	FD_ZERO(&fdRead);
-	timeval timeout;
-	timeout.tv_sec = 0.002f;
-	timeout.tv_usec = 0;
+	timeval timeOut;
+	timeOut.tv_sec = 0.002f;
+	timeOut.tv_usec = 0;
 	int nContinue = 0;
 	while (true)
 	{
 		makefd(&fdRead);
-		nContinue = select(0, &fdRead, NULL, NULL, &timeout);
+		nContinue = select(0, &fdRead, NULL, NULL, &timeOut);
 		if (nContinue != 0)
 		{
 			for (int i = 0; i < fdRead.fd_count; i++)
 			{
 				if (FD_ISSET(fdRead.fd_array[i], &fdRead))
 				{
+					m_mutexRecv.lock();
+					//根据套接字查找 对应的nPlayerID
 					int nPlayerID = getPlayerID(fdRead.fd_array[i]);
 					auto PlayerData = m_MapPlayerData.find(nPlayerID)->second;
-					m_mutexRecv.lock();
 					int nLen = recv(fdRead.fd_array[i], PlayerData->chRecvBuf, MSG_PACK_LENG, 0);
 					m_mutexRecv.unlock();
 
@@ -124,13 +122,6 @@ void RetroSnaker::RecvCallBack()
 	}
 } 
 
-int RetroSnaker::getMessageLen(char chRecBuf[], int nHeadLen)
-{
-	char chHead[4] = {0};
-	//strncpy(chHead, chRecBuf, 4);
-	return (int)chRecBuf;
-}
-
 char* RetroSnaker::DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen)
 {
 	for (int i = 0; nMsgLen + i < nBufLen; i++)
@@ -138,37 +129,32 @@ char* RetroSnaker::DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen)
 		chRecBuf[i] = chRecBuf[i + nMsgLen];
 	}
 	memset(chRecBuf + (nBufLen - nMsgLen), 0, 1024 - (nBufLen - nMsgLen));
+	printf("(DeleteMessage) nBufLen - bMsgLen = %d", nBufLen - nMsgLen);
 	return chRecBuf;
 }
 
-void RetroSnaker::TaskCallBack()
-{
-//	HandleTask(msg);
-
-}
-
-void RetroSnaker::HandleTask(Message::TagMsgHead msg, char* pchMsg, int nPlayerID)
+void RetroSnaker::handleTask(Message::TagMsgHead msg, char* pChMsg, int nPlayerID)
 {
 	switch (msg.nMessageHead)
 	{
 	case HEAD_LOGIN:
 		{
-			Message::TagPlayerData *PlayerData = (Message::TagPlayerData*) pchMsg;
+			Message::TagPlayerData *PlayerData = (Message::TagPlayerData*) pChMsg;
 			PlayerData->nPlayerID = nPlayerID;
 			char* p = &PlayerData->chStart;
-			std::string strPlayerName;
-			for (; *p != 0; p++)
-			{
-				strPlayerName += *p;
- 			}
-			PlayerSignIn(PlayerData, strPlayerName);
+			std::string strPlayerName = p;
+// 			for (; *p != 0; p++)
+// 			{
+// 				strPlayerName += *p;
+//  			}
+			responseSignIn(PlayerData, strPlayerName);
 		}
 			break;
 	case HEAD_READY:
 		{
 			m_nReadyNum++;
-			Message::TagSendState* sendState = (Message::TagSendState*) pchMsg;
-			sendPlayerState(sendState);
+			Message::TagSendState* pSendState = (Message::TagSendState*) pChMsg;
+			sendPlayerState(pSendState);
 		}
 			break;
 	case HEAD_PLAYER_DATA:
@@ -176,15 +162,17 @@ void RetroSnaker::HandleTask(Message::TagMsgHead msg, char* pchMsg, int nPlayerI
 		break;
 	case HEAD_DIRECTION:
 		{
-			Message::TagSnakeHeadDirection* SnakeDirection = (Message::TagSnakeHeadDirection*) pchMsg;
-			auto PlayerData = m_MapPlayerData.find(SnakeDirection->nPlayerID);
-			PlayerData->second->nSnakeDirecotion = SnakeDirection->nDirection;
+			Message::TagSnakeHeadDirection* pSnakeDirection = (Message::TagSnakeHeadDirection*) pChMsg;
+			m_mutexPlayerData.lock();
+			auto playerData = m_MapPlayerData.find(pSnakeDirection->nPlayerID);
+			playerData->second->nSnakeDirecotion = pSnakeDirection->nDirection;
+			m_mutexPlayerData.unlock();
 		}
 		break;
 	}
 }
 
-int RetroSnaker::CreatePlayerID()
+int RetroSnaker::createPlayerID()
 {
 	return m_nPlayerID++;
 }
@@ -198,17 +186,16 @@ void RetroSnaker::unPackCallBack()
 			Message::TagMsgHead MsgHead = *(Message::TagMsgHead*)playerData.second->chRecvBuf;
 			if (MsgHead.nMsgLeng <= playerData.second->nRecvSize)
 			{
-				char* pchMsg = new char[MsgHead.nMsgLeng];
-				std::memset(pchMsg, 0, MsgHead.nMsgLeng);
-				memcpy(pchMsg, playerData.second->chRecvBuf, MsgHead.nMsgLeng);
+				char* pChMsg = new char[MsgHead.nMsgLeng];
+				std::memset(pChMsg, 0, MsgHead.nMsgLeng);
+				memcpy(pChMsg, playerData.second->chRecvBuf, MsgHead.nMsgLeng);
 				m_mutexRecv.lock();
 				*playerData.second->chRecvBuf = *DeleteMessage(playerData.second->chRecvBuf, MsgHead.nMsgLeng, playerData.second->nRecvSize);
 				playerData.second->nRecvSize -= MsgHead.nMsgLeng;
 				m_mutexRecv.unlock();
-				printf("name =  %c%c%c\n", pchMsg[MsgHead.nMsgLeng - 3], pchMsg[MsgHead.nMsgLeng - 2], pchMsg[MsgHead.nMsgLeng - 1]);
-				HandleTask(MsgHead, pchMsg, playerData.second->nPlayerID);
-				delete[] pchMsg;
-				pchMsg = NULL;
+				handleTask(MsgHead, pChMsg, playerData.second->nPlayerID);
+				delete[] pChMsg;
+				pChMsg = NULL;
 			}
 		}
 	}
@@ -216,41 +203,41 @@ void RetroSnaker::unPackCallBack()
 
 void RetroSnaker::initPlayer(SOCKET sock)
 {
-	g_TagPlayerData PlayerData;
-	PlayerData.sock = sock;
-	int nPlayerID = CreatePlayerID();
-	PlayerData.nRecvSize = 0;
-	PlayerData.nPlayerID = nPlayerID;
-	PlayerData.nColour = -1;
-	PlayerData.nRead = -1;
-	memset(PlayerData.chRecvBuf, 0, MSG_PACK_LENG);
+	auto pPlayerData = new g_TagPlayerData;
+	//g_TagPlayerData PlayerData = *p;
+	pPlayerData->sock = sock;
+	int nPlayerID = createPlayerID();
+	pPlayerData->nRecvSize = 0;
+	pPlayerData->nPlayerID = nPlayerID;
+	pPlayerData->nColour = -1;
+	pPlayerData->nRead = -1;
+	pPlayerData->nSnakeDirecotion = -1;
+	memset(pPlayerData->chRecvBuf, 0, MSG_PACK_LENG);
 	m_mutexPlayerData.lock();
-	m_MapPlayerData.insert(std::make_pair(nPlayerID, &PlayerData));
+	m_MapPlayerData.insert(std::make_pair(nPlayerID, pPlayerData));
 	m_mutexPlayerData.unlock();
 }
 
-void RetroSnaker::PlayerSignIn(Message::TagPlayerData *msg, std::string strPlayerName)
+void RetroSnaker::responseSignIn(Message::TagPlayerData *pMsg, std::string strPlayerName)
 {
 	Message::TagPlayerData sendData;
 	sendData.nColour = initColour();
 	sendData.nMessageHead = HEAD_LOGIN;
-	sendData.nMsgID = msg->nMsgID;
-	sendData.nPlayerID = msg->nPlayerID;
+	sendData.nMsgID = pMsg->nMsgID;
+	sendData.nPlayerID = pMsg->nPlayerID;
 	sendData.chStart = *strPlayerName.c_str();
 	sendData.nState = 0;
 	sendData.nMsgLeng = sizeof(int)* 6 + 1 +  strPlayerName.size();
-	char sendBuf[MSG_PACK_LENG] = { 0 };
-	memcpy(sendBuf, &sendData, sizeof(int)* 6 + 1);
-	memcpy(sendBuf + sizeof(int)* 6 + 1, strPlayerName.c_str() + 1, strPlayerName.size() - 1);
-	auto sock = m_MapPlayerData.find(msg->nPlayerID);	
-	auto sockClient = sock->second->sock;
+	char chSendBuf[MSG_PACK_LENG] = { 0 };
+	memcpy(chSendBuf, &sendData, sizeof(int)* 6 + 1);
+	memcpy(chSendBuf + sizeof(int)* 6 + 1, strPlayerName.c_str() + 1, strPlayerName.size() - 1);
 	m_mutexPlayerData.lock();
-	auto playerData = m_MapPlayerData.find(msg->nPlayerID);
+	auto playerData = m_MapPlayerData.find(pMsg->nPlayerID);
 	playerData->second->strPlayerName = strPlayerName;
 	playerData->second->nColour = sendData.nColour;
-	
 	m_mutexPlayerData.unlock();
-	int nLen = send(sockClient, sendBuf, sendData.nMsgLeng, 0);
+	auto sockClient = playerData->second->sock;
+	send(sockClient, chSendBuf, sendData.nMsgLeng, 0);
 }
 
 int RetroSnaker::initColour()
@@ -268,12 +255,12 @@ int RetroSnaker::initColour()
 	return nColour->second;
 }
 
-void RetroSnaker::TimerCallBack()
+void RetroSnaker::timerCallBack()
 {
 	MSG msg;
-	PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
+	// PeekMessage(&msg, NULL, WM_USER, WM_USER, PM_NOREMOVE);
 
-	UINT timerid = SetTimer(NULL, 1, 10, OnTimer);
+	UINT timerid = SetTimer(NULL, 1, 10, onTimer);
 	UINT SendTimerid = SetTimer(NULL, 2, 1000, sendPositionTimer);
 	//UINT sendTime = SetTimer(NULL, 2, 1000, OnTimer);
 	BOOL bRet;
@@ -296,7 +283,8 @@ void RetroSnaker::TimerCallBack()
 
 void RetroSnaker::makefd(fd_set *fd_list)
 {
-	FD_ZERO(fd_list);//首先将fd_list清0  
+	//首先将fd_list清0
+	FD_ZERO(fd_list);  
 	//将每一个socket加入fd_list中  
 	for (auto& iter : m_MapPlayerData)
 	{
@@ -306,7 +294,7 @@ void RetroSnaker::makefd(fd_set *fd_list)
 
 int RetroSnaker::getPlayerID(SOCKET sock)
 {
-	for (auto& iter : m_MapPlayerData)
+	for (const auto& iter : m_MapPlayerData)
 	{
 		if (iter.second->sock == sock)
 		{
@@ -324,60 +312,60 @@ void RetroSnaker::sendPosition()
 	else
 	{
 		int nSize = 0;
-		char* sendBuf = new char[MSG_PACK_LENG];
-		memset(sendBuf, 0, MSG_PACK_LENG);
+		char* pSendBuf = new char[MSG_PACK_LENG];
+		memset(pSendBuf, 0, MSG_PACK_LENG);
 		if (m_bInitPlayerPosition)
 		{
-			nSize = initPlayerPosition(sendBuf);
+			nSize = initPlayerPosition(pSendBuf);
 			m_bInitPlayerPosition = false;
 		}
 		else
 		{
-			nSize = getSnakePosition(sendBuf);
+			nSize = getSnakePosition(pSendBuf);
 			m_bInitPlayerPosition = false;
 		}
-		for (auto iter : m_MapPlayerData)
+		for (const auto& iter : m_MapPlayerData)
 		{
 			auto PlayerData = iter.second;
-			int nSenleng = send(PlayerData->sock, sendBuf, nSize, 0);
-			int nStrLen = std::strlen(sendBuf);
-			printf("nStrLen = %d", nStrLen);
-
+			int nSenleng = send(PlayerData->sock, pSendBuf, nSize, 0);
 		}
-		delete[]sendBuf;
-		sendBuf = NULL;
-
+		delete[]pSendBuf;
+		pSendBuf = NULL;
 	}
 }
 
-int RetroSnaker::getSnakePosition(char* sendBuf)
+int RetroSnaker::getSnakePosition(char* pSendBuf)
 {
+	
 	int nSize = 4;
 	int nHead = HEAD_SNAKE_POSITION;
-	memcpy(sendBuf + nSize, &nHead, sizeof(int));
+	memcpy(pSendBuf + nSize, &nHead, sizeof(int));
 	nSize += sizeof(int);
 	int nMsgID = 0;
-	memcpy(sendBuf + nSize, &nMsgID, sizeof(int));
+	memcpy(pSendBuf + nSize, &nMsgID, sizeof(int));
 	nSize += sizeof(int);
-	memcpy(sendBuf + nSize, &m_nReadyNum, sizeof(int));
+	memcpy(pSendBuf + nSize, &m_nReadyNum, sizeof(int));
 	nSize += sizeof(int);
 	/*点的位置先不变 先不判断碰撞机制*/
-	memcpy(sendBuf + nSize, &m_DotPos, sizeof(m_DotPos));
-	nSize += sizeof(m_DotPos);
+	memcpy(pSendBuf + nSize, &m_DotPos.nPositionX, sizeof(int));
+	nSize += sizeof(int);
+	memcpy(pSendBuf + nSize, &m_DotPos.nPositionY, sizeof(int));
+	nSize += sizeof(int);
 
 	for (auto iter : m_MapPlayerData)
 	{
-		auto PlayerData = iter.second;
-		if (PlayerData->SnakePosition.size() > 1)
+		auto playerData = iter.second;
+		if (playerData->vSnakePosition.size() > 1)
 		{
-			auto PositionLsat = PlayerData->SnakePosition.end();
-			auto PositionHead = PlayerData->SnakePosition.begin();
+			auto PositionLsat = playerData->vSnakePosition.end();
+			auto PositionHead = playerData->vSnakePosition.begin();
 			*PositionHead = *PositionLsat;
-			PlayerData->SnakePosition.insert(PlayerData->SnakePosition.begin() + 2, *PositionLsat);
-			PlayerData->SnakePosition.erase(PlayerData->SnakePosition.end());
+			playerData->vSnakePosition.insert(playerData->vSnakePosition.begin() + 2, *PositionLsat);
+			playerData->vSnakePosition.erase(playerData->vSnakePosition.end());
 		}
-		auto SnakeHead = PlayerData->SnakePosition.begin();
-		switch (PlayerData->nSnakeDirecotion)
+		
+		auto SnakeHead = playerData->vSnakePosition.begin();
+		switch (playerData->nSnakeDirecotion)
 		{
 		case SnakeHeadUpper:
 			SnakeHead->nPositionY += 20;
@@ -391,21 +379,21 @@ int RetroSnaker::getSnakePosition(char* sendBuf)
 		case SnakeHeadLeft:
 			SnakeHead->nPositionX -= 20;
 			break;
-		default:
-			break;
 		}
-		int nLeng = PlayerData->SnakePosition.size();
-		memcpy(sendBuf + nSize, &nLeng, sizeof(int));
+		int nLeng = playerData->vSnakePosition.size();
+		memcpy(pSendBuf + nSize, &nLeng, sizeof(int));
 		nSize += sizeof(int);
-		memcpy(sendBuf + nSize, &PlayerData->nPlayerID, sizeof(int));
+		memcpy(pSendBuf + nSize, &playerData->nPlayerID, sizeof(int));
 		nSize += sizeof(int);
-		for (int i = 0; i < PlayerData->SnakePosition.size(); i++)
+		memcpy(pSendBuf + nSize, &playerData->nSnakeDirecotion, sizeof(int));
+		nSize += sizeof(int);
+		for (int i = 0; i < playerData->vSnakePosition.size(); i++)
 		{
-			memcpy(sendBuf + nSize, &PlayerData->SnakePosition[i], sizeof(int)* 2);
+			memcpy(pSendBuf + nSize, &playerData->vSnakePosition[i], sizeof(int)* 2);
 			nSize += sizeof(int)* 2;
 		}
 	}
-	memcpy(sendBuf, (char*)nSize, sizeof(int));
+	memcpy(pSendBuf, &nSize, sizeof(int));
 	return nSize;
 }
 
@@ -426,7 +414,7 @@ void RetroSnaker::sendPlayerState(Message::TagSendState* Msg)
 	playerData->second->nRead = sendPlayerData.nState;
 	m_mutexPlayerData.unlock();
 
-	for (auto& iter:m_MapPlayerData)
+	for (const auto& iter:m_MapPlayerData)
 	{
 		auto playerData = iter.second;
 		send(playerData->sock, sendBuf, sendPlayerData.nMsgLeng, 0);
@@ -439,7 +427,7 @@ int RetroSnaker::initPlayerPosition(char* sendBuf)
 	int nHead = HEAD_SNAKE_POSITION;
 	memcpy(sendBuf + nSize, (char*)&nHead, sizeof(int));
 	nSize += sizeof(int);
-	m_DotPos = CreatePosition();
+	m_DotPos = createPosition();
 	int nMsgID = 0;
 	memcpy(sendBuf + nSize, &nMsgID, sizeof(int));
 	nSize += sizeof(int);
@@ -447,14 +435,14 @@ int RetroSnaker::initPlayerPosition(char* sendBuf)
 	nSize += sizeof(int);
 	memcpy(sendBuf + nSize, &m_DotPos, sizeof(m_DotPos));
 	nSize += sizeof(m_DotPos);
+	m_mutexPlayerData.lock();
 	for (auto iter : m_MapPlayerData)
 	{
 		auto playerData = iter.second;
-		BodyPosition Pos = CreatePosition();
+		BodyPosition pos = createPosition();
 								
-		m_mutexPlayerData.lock();
-		playerData->SnakePosition.push_back(Pos);
-		if (Pos.nPositionX / 20 >= 8)
+		playerData->vSnakePosition.push_back(pos);
+		if (pos.nPositionX / 20 >= 8)
 		{
 			playerData->nSnakeDirecotion = SnakeHeadLeft;
 		}
@@ -462,8 +450,11 @@ int RetroSnaker::initPlayerPosition(char* sendBuf)
 		{
 			playerData->nSnakeDirecotion = SnakeHeadRight;
 		}
-		printf("SnakePosX = %d\n" ,Pos.nPositionX);
-		m_mutexPlayerData.unlock();
+		printf("SnakePosX = %d\n" ,pos.nPositionX);
+		const auto& pPos = playerData->vSnakePosition.front();
+	    // printf("PlayerData.SnakePosition.x =  d%\n", playerData->SnakePosition.begin()->nPositionX);
+		printf("PlayerData.SnakePosition.x =  d%\n", pos.nPositionX);
+		/*初始化时 蛇的身体长度为 1 */
 		int nSnakeSize = 1;
 		memcpy(sendBuf + nSize, &nSnakeSize, sizeof(int));
 		nSize += sizeof(int);
@@ -471,34 +462,34 @@ int RetroSnaker::initPlayerPosition(char* sendBuf)
 		nSize += sizeof(int);
 		memcpy(sendBuf + nSize, &playerData->nSnakeDirecotion, sizeof(int));
 		nSize += sizeof(int);
-		for (int i = 0; i < playerData->SnakePosition.size(); i++)
+		for (int i = 0; i < playerData->vSnakePosition.size(); i++)
 		{
-			memcpy(sendBuf + nSize, &playerData->SnakePosition[i].nPositionX, sizeof(int));
+			memcpy(sendBuf + nSize, &playerData->vSnakePosition[i].nPositionX, sizeof(int));
 			nSize += sizeof(int);
-			memcpy(sendBuf + nSize, &playerData->SnakePosition[i].nPositionY, sizeof(int));
+			memcpy(sendBuf + nSize, &playerData->vSnakePosition[i].nPositionY, sizeof(int));
 			nSize += sizeof(int);
 		}
 	}
+	m_mutexPlayerData.unlock();
 	memcpy(sendBuf,&nSize, sizeof(int));
 	return nSize;
 }
 
-BodyPosition RetroSnaker::CreatePosition()
+BodyPosition RetroSnaker::createPosition()
 {
-	srand((unsigned)time(NULL));
 	BodyPosition Pos;
 	Pos.nPositionX = ((int)rand() % 16) * 20;
 	Pos.nPositionY = ((int)rand() % 16) * 20;
 	return Pos;
 }
 
-void CALLBACK OnTimer(HWND hwnd, UINT uMsg, UINT IDEvent, DWORD DwTime)
+void CALLBACK onTimer(HWND hwnd, UINT uMsg, UINT IDEvent, DWORD DwTime)
 {
-	RetroSnaker::getInstance()->unPackCallBack();
+	RetroSnaker::GetInstance()->unPackCallBack();
 }
 
 void CALLBACK sendPositionTimer(HWND hwnd, UINT uMsg, UINT IDEvent, DWORD DwTime)
 {
-	RetroSnaker::getInstance()->sendPosition();
+	RetroSnaker::GetInstance()->sendPosition();
 }
  

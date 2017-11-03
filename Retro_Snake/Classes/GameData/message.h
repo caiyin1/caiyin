@@ -29,6 +29,9 @@
 #define HEAD_PLAYER_DIE		6
 #define HEAD_GAME_OVER		7
 #define HEAD_DIRECTION		8
+
+#define HEAD_DOT 10
+#define HEAD_SNAKE 11
 enum SnakeHeadDirection
 {
 	SnakeHeadUpper,
@@ -82,6 +85,8 @@ struct TaskMsg
 
 typedef struct TagSnakePosition
 {
+	// nHead 10 表示处理Dot的数据， 11代表处理蛇的数据
+	int nHead;
 	int nPlayerID;
 	int nDirection;
 	std::vector<cocos2d::Size> SnakePosition;
@@ -130,6 +135,15 @@ public:
 		};
 		int nPlayerID;
 		int nDirection;
+	};
+	struct TagDotPosition : public TagMsgHead
+	{
+		int nSnakeNum;
+		struct TagDotPos
+		{
+			int nPositionX;
+			int nPositionY;
+		} DotPos;
 	};
 };
 

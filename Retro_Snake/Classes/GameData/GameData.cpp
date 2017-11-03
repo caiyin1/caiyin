@@ -74,13 +74,13 @@ char* GameData::getRecBuf()
 
 void GameData::setPlayerColour(int nPlayerID, int nPlayerColour)
 {
-	m_PlayerColour.insert(std::make_pair(nPlayerID, nPlayerColour));
+	m_MapPlayerColour.insert(std::make_pair(nPlayerID, nPlayerColour));
 }
 
 int GameData::getPlayerColour(int nPlayerID)
 {
-	auto nColour = m_PlayerColour.find(nPlayerID);
-	if (nColour == m_PlayerColour.end())
+	auto nColour = m_MapPlayerColour.find(nPlayerID);
+	if (nColour == m_MapPlayerColour.end())
 	{
 		return -1;
 	}
@@ -90,7 +90,7 @@ int GameData::getPlayerColour(int nPlayerID)
 void GameData::addPlayerStateTask(TagPlayerStateData msg)
 {
 	m_PlayerDataMutex.lock();
-	m_PlayerState.push_back(msg);
+	m_vPlayerState.push_back(msg);
 	m_PlayerDataMutex.unlock();
 }
 
@@ -99,7 +99,7 @@ bool GameData::isPlayerStateTask()
 	bool bRet = false;
 	do 
 	{
-		CC_BREAK_IF(m_PlayerState.empty());
+		CC_BREAK_IF(m_vPlayerState.empty());
 		bRet = true;
 	} while (0);
 	return bRet;
@@ -107,11 +107,12 @@ bool GameData::isPlayerStateTask()
 
 TagPlayerStateData GameData::getPlayerStateTask()
 {
-	auto msg = *m_PlayerState.begin();
+
+	auto msg = m_vPlayerState.begin();
 	m_PlayerDataMutex.lock();
-	m_PlayerState.erase(m_PlayerState.begin());
+	m_vPlayerState.erase(m_vPlayerState.begin());
 	m_PlayerDataMutex.unlock();
-	return msg;
+	return *msg;
 }
 
 int GameData::getRecvLen()
@@ -139,7 +140,7 @@ TagPlayerStateData* GameData::getPlayerData(int nPlayerID)
 	if (strRet == m_MapPlayerData.end())
 	{
 		TagPlayerStateData Ret;
-		Ret.nHead = -1;
+		Ret.nPlayerID = -1;
 		return &Ret;
 	}
 	return &strRet->second;
@@ -161,7 +162,7 @@ void GameData::deletePlayerData(int nPlayerID)
 void GameData::setSnakePositionTask(TagSnakePosition tagSnakePosition)
 {
 	m_PositionMutex.lock();
-	m_VecSnakePosition.push_back(tagSnakePosition);
+	m_vSnakePosition.push_back(tagSnakePosition);
 	m_PositionMutex.unlock();
 }
 
@@ -170,19 +171,17 @@ bool GameData::isSnakePositionTask()
 	bool bRet = false;
 	do 
 	{
-		CC_BREAK_IF(!m_VecSnakePosition.empty());
+		CC_BREAK_IF(!m_vSnakePosition.empty());
 		bRet = true;
 	} while (0);
-	return false;
+	return bRet;
 }
 
-TagSnakePosition* GameData::getSnakePositionTask()
+TagSnakePosition GameData::getSnakePositionTask()
 {
-	auto TagRet = m_VecSnakePosition.begin();
+	auto TagRet = *m_vSnakePosition.begin();
 	m_PositionMutex.lock();
-	m_VecSnakePosition.erase(m_VecSnakePosition.begin());
+	m_vSnakePosition.erase(m_vSnakePosition.begin());
 	m_PositionMutex.unlock();
 	return TagRet;
 }
-
-//Director

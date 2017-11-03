@@ -15,11 +15,13 @@ bool RetroSnakerGame::init()
 	{
 		CC_BREAK_IF(!Scene::init());
 		CC_BREAK_IF(!initDirection("D:\\material\\Direction.png"));
- 		std::thread thRecv(&RetroSnakerGame::ThreadRecv, this);
-		CC_BREAK_IF(!initRead());
 		CC_BREAK_IF(!initMyData());
+		CC_BREAK_IF(!initRead());
+		schedule(schedule_selector(RetroSnakerGame::schedulePlayerStateTask), 0.05f);
+		schedule(schedule_selector(RetroSnakerGame::scheduleSnakePostionTask), 0.05f);
+ 		std::thread thRecv(&RetroSnakerGame::threadRecv, this);
  		thRecv.detach();
-		//schedule();
+		
 		bRet = true;
 	} while (0);
 
@@ -64,7 +66,7 @@ bool RetroSnakerGame::initDirection(const std::string& strDirectionImage)
 
 }
 
-void RetroSnakerGame::ThreadRecv()
+void RetroSnakerGame::threadRecv()
 {
 	int nSize = 0;	
 	char chRecvBuf[MSG_PACK_LENG] = { 0 };
@@ -84,7 +86,7 @@ void RetroSnakerGame::ThreadRecv()
 		while (nSize < sizeof(int) * 3)
 		{
 			int nLen = recv(gameData->getSockServer(), chRecvBuf + nSize, MSG_PACK_LENG, 0);
-			if (nLen == SOCKET_ERROR)
+			if (nLen == SOCKET_ERROR || nLen == 0)
 			{
 				closesocket(gameData->getSockServer());
 				return;
@@ -92,10 +94,10 @@ void RetroSnakerGame::ThreadRecv()
 			nSize += nLen;
 		}
 		Message::TagMsgHead msgHead = *(Message::TagMsgHead*) chRecvBuf;
-		while (msgHead.nMsgLeng < nSize)
+		while (msgHead.nMsgLeng > nSize)
 		{
 			int nLen = recv(gameData->getSockServer(), chRecvBuf + nSize, MSG_PACK_LENG, 0);
-			if (nLen == SOCKET_ERROR)
+			if (nLen == SOCKET_ERROR || nLen == 0)
 			{
 				closesocket(gameData->getSockServer());
 				return;
@@ -105,10 +107,13 @@ void RetroSnakerGame::ThreadRecv()
 		char* pChMsg = new char[msgHead.nMsgLeng];
 		std::memset(pChMsg, 0, msgHead.nMsgLeng);
 		memcpy(pChMsg, chRecvBuf, msgHead.nMsgLeng);
-		*chRecvBuf = *DeleteMessage(chRecvBuf, msgHead.nMsgLeng, nSize);
+		CCLOG("RecvBuf = %s", pChMsg);
+		*chRecvBuf = *deleteMessage(chRecvBuf, msgHead.nMsgLeng, nSize);
+		nSize -= msgHead.nMsgLeng;
 		unPack(&msgHead, pChMsg);
 		delete[]pChMsg;
 	}
+	CCLOG("ERROR : exit RecvThread!!!");
 }
 
 void RetroSnakerGame::sendDirection()
@@ -171,7 +176,6 @@ void RetroSnakerGame::menuLowerCallBack(cocos2d::Ref* Spender)
 	{
 		m_pMenuHorizontal->setEnabled(false);
 		m_pMenuVertical->setEnabled(false);
-
 		m_SnakeHeadDirection = SnakeHeadLower;
 		sendDirection();
 	}
@@ -180,7 +184,7 @@ void RetroSnakerGame::menuLowerCallBack(cocos2d::Ref* Spender)
 void RetroSnakerGame::schedulePlayerStateTask(float at)
 {
 	auto gameData = GameData::getInstance();
-	if (gameData->isPlayerStateTask())
+	if (!gameData->isPlayerStateTask())
 	{
 		return;
 	}
@@ -196,7 +200,7 @@ void RetroSnakerGame::schedulePlayerStateTask(float at)
 	}
 }
 
-char* RetroSnakerGame::DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen)
+char* RetroSnakerGame::deleteMessage(char chRecBuf[], int nMsgLen, int nBufLen)
 {
 	for (int i = 0; nMsgLen + i <= nBufLen; i++)
 	{
@@ -216,44 +220,67 @@ void RetroSnakerGame::unPack(Message::TagMsgHead *msgHead, char* pChMsg)
 		{
 			auto gameData = GameData::getInstance();
 			Message::TagPlayerData msg = *(Message::TagPlayerData*) pChMsg;
-			char* pStart = &msg.chStart;
-			TagPlayerStateData TaskPack;
-			for (; pStart != 0; pStart++)
+			if (gameData->getPlayerData(msg.nPlayerID)->nPlayerID == -1)
 			{
-				TaskPack.strPlayerName += *pStart;
+				char* pStart = &msg.chStart;
+				TagPlayerStateData PlayerData;
+				for ( ;pStart != 0; pStart++)
+				{
+					PlayerData.strPlayerName += *pStart;
+				}
+				PlayerData.nPlayerID = msg.nPlayerID;
+				PlayerData.nState = msg.nState;
+				PlayerData.nColour = msg.nColour;
+				gameData->setPlayerData(msg.nPlayerID, PlayerData);
+				addPlayerData(PlayerData);
 			}
-			TaskPack.nHead = msg.nMessageHead;
-			TaskPack.nPlayerID = msg.nPlayerID;
-			TaskPack.nState = msg.nState;
-			TaskPack.nColour = msg.nColour;
-			gameData->addPlayerStateTask(TaskPack);
+			else
+			{
+				gameData->getPlayerData(msg.nPlayerID)->nState = msg.nState;
+			}
 			break;
 		}
 	case HEAD_SNAKE_POSITION:
 		{
-			int nSnakeNum = *(int*)(pChMsg + sizeof(*msgHead));
-			int nSize = sizeof(*msgHead) + sizeof(int);
-			for (int i = 0; i < nSnakeNum; i++)
+			//接收到游戏开始信号
+			m_bState = true;
+
+			Message::TagDotPosition* dotPosition = (Message::TagDotPosition* ) pChMsg;
+			TagSnakePosition tagDotPosition;
+			tagDotPosition.nDirection = 0;
+			tagDotPosition.nHead = HEAD_DOT;
+			tagDotPosition.nPlayerID = 0;
+			Size dotSize;
+			dotSize.width = dotPosition->DotPos.nPositionX;
+			dotSize.height = dotPosition->DotPos.nPositionY;
+			tagDotPosition.SnakePosition.push_back(dotSize);
+			auto gameData = GameData::getInstance();
+			gameData->setSnakePositionTask(tagDotPosition);
+			int nSize = sizeof(int) * 6;
+			for (int i = 0; i < dotPosition->nSnakeNum; i++)
 			{
-				int nPlayerID = *(int*)(pChMsg + nSize);
-				nSize += sizeof(int);
 				int nSnakeLen = *(int*)(pChMsg + nSize);
+				nSize += sizeof(int);
+				int nPlayerID = *(int*)(pChMsg + nSize);
 				nSize += sizeof(int);
 				int nHeadDirection = *(int*)(pChMsg + nSize);
 				nSize += sizeof(int);
 				TagSnakePosition tagSnakePosition;
+				tagSnakePosition.nHead = HEAD_SNAKE;
 				tagSnakePosition.nPlayerID = nPlayerID;
 				tagSnakePosition.nDirection = nHeadDirection;
 				for (int j = 0; j < nSnakeLen; j++)
 				{
 					Size size;
 					size.width = *(int *)(pChMsg + nSize);
-					nSize += sizeof(int);
+					int PosX = *(int *)(pChMsg + nSize);
+
+					nSize += sizeof(float);
 					size.height = *(int *)(pChMsg + nSize);
-					nSize += sizeof(int);
+					int nPosY = *(int *)(pChMsg + nSize);
+					nSize += sizeof(float);
 					tagSnakePosition.SnakePosition.push_back(size);
 				}
-				auto gameData = GameData::getInstance();
 				gameData->setSnakePositionTask(tagSnakePosition);
 			}
 		}
@@ -264,10 +291,11 @@ void RetroSnakerGame::addPlayerData(TagPlayerStateData& Task)
 {
 	auto gameData = GameData::getInstance();
 	auto PlayerData = gameData->getPlayerData(Task.nPlayerID);
+	//判断是名字的Lebal是否为空为空就不添加Label
 	if (PlayerData->pLabelName == nullptr)
 	{
 		char chPlayerName[32] = { 0 };
-		sprintf(chPlayerName, "%s%d", Task.strPlayerName, Task.nPlayerID);
+		sprintf(chPlayerName, "%s %d", Task.strPlayerName, Task.nPlayerID);
 		PlayerData->pLabelName = Label::createWithTTF(chPlayerName, "fonts/Marker Felt.ttf", 5);
 		PlayerData->pLabelName->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
 		PlayerData->pLabelName->setPosition(_contentSize.width, _contentSize.height - (PlayerData->pLabelName->getContentSize().height + 5)  * m_nPlayerNum++);
@@ -282,11 +310,10 @@ bool RetroSnakerGame::initRead()
 	bool bRet = false;
 	do 
 	{ 
-		auto labelRead = Label::createWithTTF("准备", "fonts/Marker Felt.ttf", 20);
-		auto ReadButton = MenuItemLabel::create(labelRead, this, menu_selector(RetroSnakerGame::ReadCallBack));
-		
+		auto labelRead = Label::createWithTTF("Read", "fonts/Marker Felt.ttf", 20);
+		auto ReadButton = MenuItemLabel::create(labelRead, this, menu_selector(RetroSnakerGame::readCallBack));		
 		m_pMenuRead = Menu::create(ReadButton, NULL);
-		m_pMenuRead->setPosition(Vec2((_contentSize.width - m_pMenuVertical->getContentSize().width)* 0.5f, _contentSize.height));
+		m_pMenuRead->setPosition(_contentSize * 0.5f);
 		addChild(m_pMenuRead);
 		bRet = true;
 	} while (0);
@@ -296,26 +323,70 @@ bool RetroSnakerGame::initRead()
 void RetroSnakerGame::scheduleSnakePostionTask(float at)
 {
 	auto gameData = GameData::getInstance();
-	if (gameData->isSnakePositionTask())
+	if (!gameData->isSnakePositionTask())
 	{
 		auto PositionTask = gameData->getSnakePositionTask();
-		auto playerData = gameData->getPlayerData(PositionTask->nPlayerID);
-		if (playerData->SnakeBody.size() == 0)
+		switch (PositionTask.nHead)
 		{
-			auto SnakeHead = MakeDraw::create(1);
-			playerData->SnakeBody.push_back(SnakeHead);
-			addChild(SnakeHead);
-		}
-		else
-		{
-			
+		case HEAD_SNAKE:
+			{
+				auto playerData = gameData->getPlayerData(PositionTask.nPlayerID);
+				if (playerData->SnakeBody.size() == 0)
+				{
+					auto SnakeHead = MakeDraw::create(1);
+					SnakeHead->setPosition(*PositionTask.SnakePosition.begin());
+					playerData->SnakeBody.push_back(SnakeHead);
+					Color4B* colour = (Color4B*)playerData->nColour;
+					//	SnakeHead->setColor(Color3B(colour->r, colour->b, colour->b));
+					addChild(SnakeHead);
+				}
+				else
+				{
+					int i = 0;
+					for (; i < playerData->SnakeBody.size(); i++)
+					{
+						auto spriteSnake = playerData->SnakeBody[i];
+						spriteSnake->setPosition(PositionTask.SnakePosition[i]);
+					}
+					for (; i < PositionTask.SnakePosition.size(); i++)
+					{
+						auto SnakeBody = MakeDraw::create(2);
+						SnakeBody->setPosition(*PositionTask.SnakePosition.begin());
+						Color4B* colour = (Color4B*)playerData->nColour;
+					//	SnakeBody->setColor(Color3B(colour->r, colour->b, colour->b));
+						playerData->SnakeBody.push_back(SnakeBody);
+						addChild(SnakeBody);
+					}
+				}
+		
+				setSnakeDirection(PositionTask.nPlayerID, PositionTask.nDirection);
+				break;
+			}
+		case HEAD_DOT:
+			{
+				if (m_pDotDraw == nullptr)
+				{
+					m_pDotDraw = MakeDraw::create(3);
+					m_pDotDraw->setPosition(*PositionTask.SnakePosition.begin());
+					addChild(m_pDotDraw);
+				}
+				else
+				{
+					auto dotSize = m_pDotDraw->getPosition();
+					auto recvPosition = *PositionTask.SnakePosition.begin();
+					if ( dotSize != recvPosition)
+					{
+						m_pDotDraw->setPosition(*PositionTask.SnakePosition.begin());
+					}
+				}
+				break;
+			}
 
 		}
-
 	}
 }
 
-void RetroSnakerGame::ReadCallBack(Ref* Spende)
+void RetroSnakerGame::readCallBack(Ref* Spende)
 {
 	auto gameData = GameData::getInstance();
 	Message::TagRead tagRead;
@@ -325,9 +396,9 @@ void RetroSnakerGame::ReadCallBack(Ref* Spende)
 	tagRead.nPlayerID = gameData->getPlayerID();
 	tagRead.nRead = 1;
 	tagRead.nMsgLeng = sizeof(int)* 5;
-	if (send(gameData->getSockServer(), (char*)&tagRead, tagRead.nRead, 0) == SOCKET_ERROR)
+	if (send(gameData->getSockServer(), (char*)&tagRead, tagRead.nMsgLeng, 0) == SOCKET_ERROR)
 	{
-		CCLog("ERROR: socek(%d) error! ", gameData->getSockServer());
+		///CCLog("ERROR: socek(%d) error! ", gameData->getSockServer());
 		return;
 	}
 	removeChild(m_pMenuRead);
@@ -343,19 +414,72 @@ bool RetroSnakerGame::initMyData()
 		if (PlayerData->pLabelName == nullptr)
 		{
 			char chPlayerName[32] = { 0 };
-			sprintf(chPlayerName, "%s%d", PlayerData->strPlayerName, PlayerData->nPlayerID);
-			PlayerData->pLabelName = Label::createWithTTF(chPlayerName, "fonts/Marker Felt.ttf", 5);
+			sprintf(chPlayerName, "%s  %d", PlayerData->strPlayerName.c_str(), PlayerData->nPlayerID);
+			PlayerData->pLabelName = Label::createWithTTF(chPlayerName, "fonts/Marker Felt.ttf", 13);
 			PlayerData->pLabelName->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
-			PlayerData->pLabelName->setPosition(_contentSize.width, _contentSize.height - (PlayerData->pLabelName->getContentSize().height + 5)  * m_nPlayerNum++);
-			Colour3b* colour = (Colour3b*)&PlayerData->nColour;
+			PlayerData->pLabelName->setPosition(_contentSize.width, _contentSize.height - (PlayerData->pLabelName->getContentSize().height + 2)  * m_nPlayerNum++);
+			Color4B* colour = (Color4B*)&PlayerData->nColour;
 			PlayerData->pLabelName->setColor(Color3B(colour->r, colour->g, colour->b));
 			CC_BREAK_IF(!PlayerData->pLabelName);
 			addChild(PlayerData->pLabelName);
+			bRet = true;
 		}
-		bRet = true;
 	} while (0);
 	return bRet;
 }
+
+void RetroSnakerGame::setSnakeDirection(int nPlayerID, int nDirection)
+{
+	auto gameData = GameData::getInstance();
+	auto playerData = gameData->getPlayerData(nPlayerID);
+	auto SnakeHead = playerData->SnakeBody[0];
+	switch (nDirection)
+	{
+ 	case SnakeHeadUpper:
+ 		SnakeHead->setRotation(0);
+		m_pMenuHorizontal->setEnabled(true);
+		m_pMenuVertical->setEnabled(false);
+ 		break;
+ 	case SnakeHeadRight:
+ 		SnakeHead->setRotation(90);
+		m_pMenuHorizontal->setEnabled(false);
+		m_pMenuVertical->setEnabled(true);
+ 		break;
+ 	case SnakeHeadLower:
+ 		SnakeHead->setRotation(180);
+		m_pMenuHorizontal->setEnabled(true);
+		m_pMenuVertical->setEnabled(false);
+ 		break;
+ 	case SnakeHeadLeft:
+ 		SnakeHead->setRotation(270);
+		m_pMenuHorizontal->setEnabled(false);
+		m_pMenuVertical->setEnabled(true);
+		break;
+	default:
+		break;
+	}
+	
+}
+
+
+// void RetroSnakerGame::setDotPosition(Message::TagDotPosition* Msg)
+// {
+// 	if (m_pDotDraw == nullptr)
+// 	{
+// 		m_pDotDraw = MakeDraw::create(3);
+// 		m_pDotDraw->setPosition(Vec2(Msg->DotPos.nPositionX, Msg->DotPos.nPositionY));
+// 		addChild(m_pDotDraw);
+// 		auto DotDraw = MakeDraw::create(3);
+// 		DotDraw->setPosition(Vec2(20, 40));
+// 		this->addChild(DotDraw);
+// 		
+// 	}
+// 	else
+// 	{
+// 		m_pDotDraw->setPosition(Vec2(Msg->DotPos.nPositionX, Msg->DotPos.nPositionY));
+// 	}
+// 	CCLOG("Dot x = %d, y = %d\n", Msg->DotPos.nPositionX, Msg->DotPos.nPositionY);
+// }
 
 
 
