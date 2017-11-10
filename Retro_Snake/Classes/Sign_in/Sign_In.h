@@ -1,4 +1,4 @@
-#ifndef __SIGN_IN_ H__
+#ifndef __SIGN_IN_H__
 #define __SIGN_IN_H__
 
 #include "cocos-ext.h"
@@ -39,7 +39,8 @@ public:
 //	bool isTask();
 public:
 	SOCKET m_clientSock;
-	std::string m_name;
+	std::string m_strName;
+	std::string m_strIP;
 private:
 	std::mutex m_RecvMutex;
 	int m_SignInMsgID;

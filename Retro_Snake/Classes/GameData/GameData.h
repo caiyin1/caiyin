@@ -16,6 +16,7 @@ typedef struct TagPlayerStateData
 	int nPlayerID;
 	int nState;
 	int nDirection;
+	int nScore;
 	cocos2d::Label *pLabelName;
 	std::string strPlayerName;
 	std::vector<MakeDraw*> SnakeBody;
@@ -76,20 +77,37 @@ public:
 	void setSnakePositionTask(TagSnakePosition tagSnakePosition);
 	bool isSnakePositionTask();
 	TagSnakePosition getSnakePositionTask();
+	/*
+	* @breif 设置玩家得分
+	*/
+	void setPlayerScore(int nPlayer, int nScore);
+	/*
+	* @breif 游戏再来一局， 初始化玩家成绩
+	*/
+	void againInitGameData();
+	/*
+	* @breif 结束RetroSnakeGame 中的threadRecv线程
+	*/
+	void deleteThreadRecv();
+	
 public:
 	int m_MsgID;
-private:
+	std::unordered_map<int, TagPlayerStateData> m_MapPlayerData;
+	//控制RetroSnakeGame 中的threadRecv线程是否结束
+	bool m_bRecvThread = true;
+
 	std::mutex m_PlayerDataMutex;
+private:
 	
 	std::mutex m_PositionMutex;
 	std::vector<TagPlayerStateData> m_vPlayerState;
 	std::vector<TagSnakePosition> m_vSnakePosition;
-	std::unordered_map<int, TagPlayerStateData> m_MapPlayerData;
 	std::unordered_map<int, int> m_MapPlayerColour;
 	char m_recBuf[MSG_PACK_LENG];
 	int m_nRecvLen ;
 	int m_nPlayerID = 0;
 	SOCKET m_sockServer;
+	
 private:
 	GameData(){};
 	~GameData(){};
