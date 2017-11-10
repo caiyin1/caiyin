@@ -29,8 +29,6 @@ private:
 	~GameData(){ };
 
 private:
-	std::mutex m_mutexTask;
-	std::mutex m_mutexPlayer;
 	std::vector<Message::TagMsgHead*> m_vecTask;
 	std::unordered_map<int, g_TagPlayerData*> m_MapPlayerData;
 };

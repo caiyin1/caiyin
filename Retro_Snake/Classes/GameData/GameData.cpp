@@ -108,11 +108,11 @@ bool GameData::isPlayerStateTask()
 TagPlayerStateData GameData::getPlayerStateTask()
 {
 
-	auto msg = m_vPlayerState.begin();
+	auto msg = *m_vPlayerState.begin();
 	m_PlayerDataMutex.lock();
 	m_vPlayerState.erase(m_vPlayerState.begin());
 	m_PlayerDataMutex.unlock();
-	return *msg;
+	return msg;
 }
 
 int GameData::getRecvLen()
@@ -184,4 +184,34 @@ TagSnakePosition GameData::getSnakePositionTask()
 	m_vSnakePosition.erase(m_vSnakePosition.begin());
 	m_PositionMutex.unlock();
 	return TagRet;
+}
+
+void GameData::setPlayerScore(int nPlayerID, int nScore)
+{
+	m_PlayerDataMutex.lock();
+	auto pIter = m_MapPlayerData.find(nPlayerID);
+	auto playerData = &pIter->second;
+	playerData->nScore = nScore;
+	m_PlayerDataMutex.unlock();
+}
+
+void GameData::againInitGameData()
+{
+	m_PlayerDataMutex.lock();
+	int nPlayerID = getPlayerID();
+	auto playerData = *getPlayerData(nPlayerID);
+	playerData.nScore = 0;
+	playerData.nDirection = -1;
+	playerData.nState = 0;
+	playerData.SnakeBody.clear();
+	m_MapPlayerData.clear();
+	m_MapPlayerData.insert(std::make_pair(nPlayerID, playerData));
+	m_PlayerDataMutex.unlock();
+
+	m_bRecvThread = true;
+}
+
+void GameData::deleteThreadRecv()
+{
+	m_bRecvThread = false;
 }

@@ -10,9 +10,9 @@
 
 
 #define MSG_PACK_LENG 1024
-#define MAX_POSX 24
-#define MAX_POSY 16
+#define MAX_POS 16
 #define MY_PORT 6666
+#define MAX_POSX 24
 
 #define UPPER 1
 #define LOWER 2
@@ -23,12 +23,14 @@
 #define HEAD_INVALID       -1 //无消息
 #define HEAD_LOGIN		1
 #define HEAD_READ		2
-#define HEAD_GAME_DATA		3
+#define HEAD_GAME_SCORE		3
 #define HEAD_PLAYER_DATA	4
 #define HEAD_SNAKE_POSITION 5
 #define HEAD_PLAYER_DIE		6
 #define HEAD_GAME_OVER		7
 #define HEAD_DIRECTION		8
+#define HEAD_HEARTBEAT		9 //心跳包
+#define HEAD_COUNTDOWN      10 //倒计时消息
 
 #define HEAD_DOT 10
 #define HEAD_SNAKE 11

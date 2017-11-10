@@ -2,6 +2,8 @@
 #include "GameData/GameData.h"
 #include "GameData/message.h"
 #include "RetroSnakerGame/RetroSnakerGame.h"
+#include "GameOver/GameOver.h"
+
 
 
 
@@ -31,34 +33,52 @@ bool SignIn::init()
 	}
 	do 
 	{
-		auto GameNameLabel = Label::createWithTTF("Retro Snaker", "fonts/Marker Felt.ttf", 40);
-		GameNameLabel->setPosition(Vec2(_contentSize.width * 0.5f, _contentSize.height - GameNameLabel->getContentSize().height));
-		CC_BREAK_IF(!GameNameLabel);
-		addChild(GameNameLabel);
+		auto gameNameLabel = Label::createWithTTF("Retro Snaker", "fonts/Marker Felt.ttf", 40);
+		gameNameLabel->setPosition(Vec2(_contentSize.width * 0.5f, _contentSize.height - gameNameLabel->getContentSize().height));
+		CC_BREAK_IF(!gameNameLabel);
+		addChild(gameNameLabel);
 		
-		auto SignInLabel = Label::createWithTTF("Sign In", "fonts/Marker Felt.ttf", 25);
-		auto SignInButton = MenuItemLabel::create(SignInLabel, this, menu_selector(SignIn::MenuSignInCallBack));
-		auto SignInMenu = Menu::create(SignInButton, NULL);
-		SignInMenu->setPosition(_contentSize.width * 0.5f, SignInLabel->getContentSize().height * 2);
-		CC_BREAK_IF(!SignInMenu);
-		addChild(SignInMenu);
+		auto logInLabel = Label::createWithTTF("Sign In", "fonts/Marker Felt.ttf", 25);
+		auto logInButton = MenuItemLabel::create(logInLabel, this, menu_selector(SignIn::MenuSignInCallBack));
+		auto logInMenu = Menu::create(logInButton, NULL);
+		logInMenu->setPosition(_contentSize.width * 0.5f, logInLabel->getContentSize().height * 2);
+		CC_BREAK_IF(!logInMenu);
+		addChild(logInMenu);
 		//schedule(schedule_selector(SignIn::scheduleHanle), 0.01f);
 		bRet = true;
-		auto pEditBox_name = EditBox::create(CCSizeMake(250, 50), Scale9Sprite::create("D:\\material\\Button.png"));
+		auto pEditBox_name = EditBox::create(CCSizeMake(250, 50), Scale9Sprite::create("res\\Button.png"));
 		if (pEditBox_name == nullptr)
 		{
 			CCLOG("pEditBox_name = nullprt");
 		}
 		pEditBox_name->setPosition(_contentSize * 0.5f);
 		pEditBox_name->setFontColor(Color3B(0, 0, 0));//设置字体颜色    
-		pEditBox_name->setPlaceHolder("Name:");//设置预置文本    
+		pEditBox_name->setPlaceHolder("Name: Not Chinese\nmost 8 char");//设置预置文本    
+		pEditBox_name->setPlaceholderFontSize(20);
 		pEditBox_name->setMaxLength(8);//设置最大长度    
 		pEditBox_name->setInputMode(cocos2d::ui::EditBox::InputMode::SINGLE_LINE);//可以输入任何，但是不包括换行   
 		pEditBox_name->setInputFlag(cocos2d::ui::EditBox::InputFlag::INITIAL_CAPS_WORD);//设置输入标志位    
 		pEditBox_name->setReturnType(cocos2d::ui::EditBox::KeyboardReturnType::DONE);//设置返回类型    
 		pEditBox_name->setDelegate(this);//当前类继承CCEditBoxDelegate类    
 		pEditBox_name->setTag(101);
-		this->addChild(pEditBox_name);
+		addChild(pEditBox_name);
+		//输入IP的文本宽
+		auto pEditBox_IP = EditBox::create(CCSizeMake(250, 50), Scale9Sprite::create("D:\\material\\Button.png"));
+		if (pEditBox_name == nullptr)
+		{
+			CCLOG("pEditBox_name = nullprt");
+		}
+		pEditBox_IP->setPosition(Vec2(_contentSize.width * 0.5f, _contentSize.height * 0.5f - pEditBox_name->getContentSize().height - 10));
+		pEditBox_IP->setFontColor(Color3B(0, 0, 0));//设置字体颜色    
+		pEditBox_IP->setPlaceHolder("IP: 127.0.0.1");//设置预置文本    
+		pEditBox_IP->setMaxLength(15);//设置最大长度    
+		pEditBox_IP->setInputMode(cocos2d::ui::EditBox::InputMode::SINGLE_LINE);//可以输入任何，但是不包括换行   
+		pEditBox_IP->setInputFlag(cocos2d::ui::EditBox::InputFlag::INITIAL_CAPS_WORD);//设置输入标志位    
+		pEditBox_IP->setReturnType(cocos2d::ui::EditBox::KeyboardReturnType::DONE);//设置返回类型    
+		pEditBox_IP->setDelegate(this);//当前类继承CCEditBoxDelegate类    
+	
+		pEditBox_IP->setTag(102);
+		addChild(pEditBox_IP);
 		schedule(schedule_selector(SignIn::scheduleLogInState), 0.1f);
 		auto DotDraw = MakeDraw::create(3);
 		DotDraw->setPosition(Vec2(20, 40));
@@ -69,12 +89,20 @@ bool SignIn::init()
 
 void SignIn::MenuSignInCallBack(Ref* Spende)
 {
+	int nameLen = m_strName.size();
+	int IPLen = m_strIP.size();
+	if (!IPLen || !nameLen)
+	{
+		return;
+	}
 	RetroSNakerClient client;
 	if (client.initSock())
 	{
 		return;
 	}
-	auto ip = client.ResolverAdress("127.0.0.1");
+	char chIP[15] = { 0 };
+	strcpy(chIP, m_strIP.c_str());
+	auto ip = client.ResolverAdress(chIP);
 	m_clientSock = client.ConnectServer(ip, MY_PORT);
 	if (m_clientSock == SOCKET_ERROR)
 	{
@@ -83,7 +111,10 @@ void SignIn::MenuSignInCallBack(Ref* Spende)
 	auto gameData = GameData::getInstance();
 	gameData->setSockServer(m_clientSock);
 	
-	sendSignIn();
+	if (!sendSignIn())
+	{
+		return;
+	}
 	std::thread RecvThread(&SignIn::recvPlayerData, this);
 	RecvThread.join();
 }
@@ -108,8 +139,10 @@ void SignIn::editBoxTextChanged(EditBox *editBox, const std::string &text)
 	{
 	case 101:
 		CCLOG("EditBox_name changed");
-		m_name = text;
+		m_strName = text;
 		break;
+	case 102:
+		m_strIP = text;
  	default:
 		break;
 	}
@@ -124,12 +157,12 @@ bool SignIn::sendSignIn()
 	sendMsg.nMessageHead = HEAD_LOGIN;
 	sendMsg.nPlayerID = 0;
 	sendMsg.nColour = -1;
-	sendMsg.nMsgLeng = sizeof(int) * 6 + 1 + m_name.size();
-	sendMsg.chStart = *m_name.c_str();
+	sendMsg.nMsgLeng = sizeof(int) * 6 + 1 + m_strName.size();
+	sendMsg.chStart = *m_strName.c_str();
 	gameData->m_MsgID++;
 	char chSendBuf[MSG_PACK_LENG] = { 0 };
 	memcpy(chSendBuf, &sendMsg, sizeof(int)* 6 + 1);
-	memcpy(chSendBuf + sizeof(int)* 6 + 1, m_name.c_str() + 1, m_name.size() - 1);
+	memcpy(chSendBuf + sizeof(int)* 6 + 1, m_strName.c_str() + 1, m_strName.size() - 1);
 	if (send(gameData->getSockServer(), chSendBuf, sendMsg.nMsgLeng, 0) == SOCKET_ERROR)
 	{
 		CCLOG("ERROR: send error!");
@@ -207,34 +240,12 @@ char* SignIn::DeleteMessage(char chRecBuf[], int nMsgLen, int nBufLen)
 
 void SignIn::scheduleLogInState(float at)
 {
-	//if (!isTask()) return;
-	//m_RecvMutex.lock();
-	//if (!isTask())
-	//{
-	//	m_RecvMutex.unlock();
-	//	return;
-	//}
-	//auto MsgTask = *m_Task.begin(); 
-	//m_Task.erase(m_Task.begin());
-	//m_RecvMutex.unlock();
 	auto gameData = GameData::getInstance();
 	if (gameData->getPlayerID() != 0)
 	{
 		Director::getInstance()->replaceScene(RetroSnakerGame::createScene());
 	}
 }
- 
-// bool SignIn::isTask()
-// {
-// 	bool bRet = false;
-// 	do 
-// 	{
-// 		CC_BREAK_IF(m_Task.empty());
-// 		bRet = true;
-// 	} while (0);
-// 	return bRet;
-// }
-
 
 void SignIn::makePack(Message::TagMsgHead msg, char* pChPack)
 {
@@ -254,6 +265,9 @@ void SignIn::makePack(Message::TagMsgHead msg, char* pChPack)
 		playerStateData.strPlayerName = strPlayerName;
 		playerStateData.nPlayerID = tagPlayerData->nPlayerID;
 		playerStateData.pLabelName = nullptr;
+		playerStateData.nScore = 0;
+		playerStateData.nDirection = 0;
+		playerStateData.nHead = -1;
 		gameData->setPlayerData(playerStateData.nPlayerID, playerStateData);
 		gameData->setPlayerID(tagPlayerData->nPlayerID);
 	}
