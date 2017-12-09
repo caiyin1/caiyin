@@ -6,8 +6,8 @@
 #include <mutex>
 #include <unordered_map> 
 
-#include "D:\\newbie/caiyin/p_caiyin.git/RetroSnakerServer/classess/RetroSnaker/RetroSnaker.h"
-#include "D:\\newbie/caiyin/p_caiyin.git/RetroSnakerServer/classess/RetroSnaker/message.h"
+#include "D:\\caiyin.git/RetroSnakerServer/classess/RetroSnaker/RetroSnaker.h"
+#include "message.h"
 
 class  GameData
 {

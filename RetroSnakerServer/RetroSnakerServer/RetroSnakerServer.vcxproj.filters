@@ -22,6 +22,9 @@
     <Filter Include="Classess\RetroSnaker">
       <UniqueIdentifier>{144ed4e7-3b09-4003-bdee-9c20ba411fd8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Classess\RetroSnaker\BackgroudDataManage">
+      <UniqueIdentifier>{7e2eb4fe-a191-4247-8a73-669096a386b6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\classess\RetroSnakerSocket\RetroSnakerServer.cpp">
@@ -33,6 +36,9 @@
     <ClCompile Include="..\classess\RetroSnaker\main.cpp">
       <Filter>Classess\RetroSnaker</Filter>
     </ClCompile>
+    <ClCompile Include="..\classess\BackgroundDataManage\BackgroundDataManage.cpp">
+      <Filter>Classess\RetroSnaker\BackgroudDataManage</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\classess\RetroSnakerSocket\RetroSnakerServer.h">
@@ -43,6 +49,9 @@
     </ClInclude>
     <ClInclude Include="..\classess\RetroSnaker\message.h">
       <Filter>Classess\RetroSnaker</Filter>
+    </ClInclude>
+    <ClInclude Include="..\classess\BackgroundDataManage\BackgroundDataManage.h">
+      <Filter>Classess\RetroSnaker\BackgroudDataManage</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

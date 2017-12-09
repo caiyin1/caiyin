@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <mutex>
 #include "message.h"
-#include "D:\\newbie/caiyin/p_caiyin.git/RetroSnakerServer/classess/RetroSnakerSocket/RetroSnakerServer.h"
-#include "D:\\newbie/caiyin/p_caiyin.git/RetroSnakerServer/classess/RetroSnaker/GameData/GameData.h"
+#include "D:\\caiyin.git/RetroSnakerServer/classess/RetroSnakerSocket/RetroSnakerServer.h"
+#include "GameData/GameData.h"
 
 typedef struct BodyPosition
 {
