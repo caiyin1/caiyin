@@ -40,7 +40,8 @@ void BackgroundDataManager::addBackData()
 	// 获取屏幕缩放比
 	float fScalingRatio = pGameDeploy->getScalingRatio();
 	float fSize = BLOCK_SIZE / fScalingRatio;
-	for (int i = 0; i < 8; i++)
+	int nNum = pGameDeploy->getGameColumnNum();
+	for (int i = 0; i < nNum; i++)
 	{
 		int nNum = cocos2d::random(0, 100);
 		// 判断添加食物

@@ -54,6 +54,8 @@ bool BB_GameScene::init()
 		CC_BREAK_IF(!Scene::init());
 		// 设置屏幕缩放比
 		GameDeploy::getInstance()->setScalingRatio(Director::getInstance()->getContentScaleFactor());
+		// 设置游戏的背景的列数
+		GameDeploy::getInstance()->setGameColumnNun(_contentSize.width);
 		// 添加一个游戏开始自定义事件
 		_eventDispatcher->addCustomEventListener(START_GAME_EVENT, CC_CALLBACK_1(BB_GameScene::onStartGameEvent, this));
 		// 开启碰撞回调事件回调函数
@@ -260,7 +262,6 @@ void BB_GameScene::initGameLayer()
 	m_pGameLayer->addChild(pButtonDraw);
 
 	createRecyclingBombButton();
-
 }
 
 void BB_GameScene::createBroundLine()
@@ -330,7 +331,7 @@ void BB_GameScene::update(float dt)
 	}
 	// 获取游戏状态
 	auto gameStatus = GameStatusManager::getInstance()->getGameStatus();
-	if (gameStatus == GameStatusManager::GameStatus::kStatus_Result)
+	if (gameStatus == GameStatusManager::GameStatus::kStatus_Result || gameStatus == GameStatusManager::GameStatus::kStatus_None)
 	{
 		return;
 	}
@@ -340,7 +341,7 @@ void BB_GameScene::update(float dt)
 	// 判断是否开启子弹回收按钮
 	if (gameStatus == GameStatusManager::GameStatus::kStatus_Runnning)
 	{
-		setRecyclingBombEnable(true);
+		setRecyclingBombEnable(true); 
 	}
 	else
 	{
@@ -470,7 +471,7 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			// 从飞行的子弹数组中删除这个子弹
 			pBombDataManager->removeFlyBombToVector(pBombSprite);
 			auto pos = a->getPosition();
-			auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 10 / fScalingRatio));
+			auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio));
 			auto delayTime = DelayTime::create(0.1f);
 			auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
 			pBombSprite->runAction(seq);
@@ -487,7 +488,7 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			pBombDataManager->removeFlyBombToVector(pBombNode);
 
 			pBombNode->setBombStatus(BombNode::BombStatus::Status_MoveTo);
-			ActionInterval* pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 10 / fScalingRatio));
+			ActionInterval* pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio));
 			auto delayTime = DelayTime::create(0.1f);
 			auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
 			pBombNode->runAction(seq);
@@ -569,6 +570,8 @@ void BB_GameScene::handleAddBackground()
 	{
 		auto pBackgroundData = BackgroundDataManager::getInstance();
 		pBackgroundData->addBackData();
+		// 改变成滚动屏幕状态
+		pGameStatus->setGameStatus(GameStatusManager::GameStatus::kStatus_RollScreen);
 	}
 }
 
@@ -594,7 +597,7 @@ void BB_GameScene::addBackgroundCallBack(cocos2d::Node* pNode)
 void BB_GameScene::handleRollScreen()
 {
 	auto pGameStatus = GameStatusManager::getInstance();
-	if (pGameStatus->getGameStatus() != GameStatusManager::GameStatus::kStatus_AddBack)
+	if (pGameStatus->getGameStatus() != GameStatusManager::GameStatus::kStatus_RollScreen)
 	{
 		return;
 	}
@@ -657,7 +660,7 @@ void BB_GameScene::handleAddBomb()
 	{
 		auto pBombSprite = BombDataManager::getInstance()->addBombNode();
 		pBombSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
-		pBombSprite->setPosition(pos.x, _contentSize.height * 0.1f + 10 / fScalingRatio);
+		pBombSprite->setPosition(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio);
 		pBombSprite->setBombSpeed(Vec2(0.0f, 0.0f));
 		m_pBombNode->addChild(pBombSprite);
 	}
@@ -763,6 +766,8 @@ void BB_GameScene::handleGameOver()
 	pCrownSprite->setPosition(10 / fScalingRatio + fMarginX, fMarginY);
 	pS9ScoreBomb->addChild(pCrownSprite);
 
+	// 关闭update
+	unscheduleUpdate();
 }
 
 void BB_GameScene::menuHomeCallBack(cocos2d::Ref* spender)
@@ -822,6 +827,11 @@ cocos2d::Sprite* BB_GameScene::createPrompt(const std::string& strFileImage)
 
 void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 {
+	auto pGameStatus = GameStatusManager::getInstance();
+	if (pGameStatus->getGameStatus() != GameStatusManager::GameStatus::kStatus_Runnning)
+	{
+		return;
+	}
 	// 获取飞行中的子弹数组
 	auto pBombDataManager = BombDataManager::getInstance();
 	auto vFlyBomb = pBombDataManager->getFlyBombVector();
@@ -833,7 +843,7 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 	for (auto i = 0; i < vFlyBomb.size(); i++)
 	{
 		auto pBombSprite = vFlyBomb[i];
-		auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * SCREEN_BUTTOM_COFFICIENT + 10 / fScalingRatio));
+		auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * SCREEN_BUTTOM_COFFICIENT + 20 / fScalingRatio));
 		pBombSprite->runAction(pMoveTo);
 		pBombSprite->setBombSpeed(Vec2(0, 0));
 	}
@@ -841,7 +851,7 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 	// 清空飞行Bomb数组数据
 	pBombDataManager->clearFlyBomb();
 	// 改变游戏状态
-	GameStatusManager::getInstance()->setGameStatus(GameStatusManager::GameStatus::kStatus_AddBack);
+	pGameStatus->setGameStatus(GameStatusManager::GameStatus::kStatus_AddBack);
 	// 关闭按钮
 	setRecyclingBombEnable(false);
 }
@@ -870,6 +880,10 @@ void BB_GameScene::createRecyclingBombButton()
 
 void BB_GameScene::setRecyclingBombEnable(const bool& b)
 {
+	if ( m_pRecyclingButton == nullptr)
+	{
+		return;
+	}
 	if (b)
 	{
 		m_pRecyclingButton->setOpacity(1 * 255);

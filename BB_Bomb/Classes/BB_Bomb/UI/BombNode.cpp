@@ -74,7 +74,7 @@ void BombNode::removePhysicsBody()
 void BombNode::setBombSpeed(const cocos2d::Vec2& speed)
 {
 	// initBombPhysicsBody();
-	m_pBombBody->setEnabled(true);
+	// m_pBombBody->setEnabled(true);
 	m_pBombBody->setDynamic(true);
 	m_pBombBody->setVelocity(speed);
 }

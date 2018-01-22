@@ -54,8 +54,12 @@ bool BlockNode::initWithData(const BlockData& blockData)
 			m_pBlockSprite = Sprite::create("res/BB_Bomb/Image/BB_block_half.png");
 			blockSize = m_pBlockSprite->getContentSize();
 			int nNum = random(1, 4);
-			initTriangle(nNum, blockSize);
 			handleTriangle(nNum);
+#if COCOS2D_VERSION 0x00030330
+			nNum = 1;
+#endif
+			initTriangle(nNum, blockSize);
+			// 3.15刚体不可选择
 			break;
 		}
 		case BlockData::Type::Type_LeftHalf:
@@ -107,13 +111,13 @@ void BlockNode::initTriangle(int nNum, cocos2d::Size blockSize)
 	{
 	case 1:
 		point[0] = Point(-blockSize.width * 0.5f, -blockSize.height *  0.5f);
-		point[1] = Point(blockSize.width * 0.5f, -blockSize.height * 0.5f);
-		point[2] = Point(-blockSize.width * 0.5f, blockSize.height * 0.5f);
+		point[1] = Point(-blockSize.width * 0.5f, blockSize.height * 0.5f);
+		point[2] = Point(blockSize.width * 0.5f, -blockSize.height * 0.5f);
 		break;
 	case 4:
 		point[0] = Point(-blockSize.width * 0.5f, -blockSize.height *  0.5f);
-		point[1] = Point(blockSize.width * 0.5f, blockSize.height * 0.5f);
-		point[2] = Point(-blockSize.width * 0.5f, blockSize.height * 0.5f);
+		point[1] = Point(-blockSize.width * 0.5f, blockSize.height * 0.5f);
+		point[2] = Point(blockSize.width * 0.5f, blockSize.height * 0.5f);
 		break;
 	case 3:
 		point[0] = Point(-blockSize.width * 0.5f, blockSize.height *  0.5f);

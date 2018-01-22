@@ -93,3 +93,18 @@ void GameDeploy::addGameDifficult()
 	m_fRightBlockAddProBaility += 1;
 
 }
+
+void GameDeploy::setGameColumnNun(float fSize)
+{
+	if (m_fScalingRatio == 0)
+	{
+		// CCLOG("Error : setGameColunmNum = 0");
+		return;
+	}
+	m_nGameColumnNum = fSize / (BLOCK_SIZE / m_fScalingRatio);
+}
+
+int GameDeploy::getGameColumnNum()
+{
+	return m_nGameColumnNum;
+}

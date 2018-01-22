@@ -67,9 +67,19 @@ public:
 	* @brief 增加游戏难度
 	*/
 	void addGameDifficult();
+	/*
+	* @brief 设置游戏的列数
+	*/
+	void setGameColumnNun(float fSize);
+	/*
+	* @brief 获取游戏的列数
+	*/
+	int getGameColumnNum();
 private:
 	// 游戏缩放比
 	float m_fScalingRatio;
+	// 游戏块块的列数
+	int m_nGameColumnNum;
 	// 正常块块生成的概率
 	float m_fNomeBlockAddProbaility;
 	// 左半边块块的生成概率
