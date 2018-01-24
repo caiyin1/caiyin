@@ -78,10 +78,12 @@ void FortNode::setArrowRotation(const cocos2d::Vec2& Pos)
 {
 	// 转换坐标
 	auto endPos = m_pFortSprite->convertToNodeSpace(Pos);
-	if (endPos.y > m_beginPos.y)
+	// 获取箭头提示缩放比
+	auto fArrowScalingRatio = GameDeploy::getInstance()->getArrowScalingRatio();
+	if (endPos.y < m_beginPos.y)
 	{
-		float fSize = endPos.y - m_beginPos.y > 20 ? endPos.y - m_beginPos.y : 20;
-		fSize = fSize / 20;
+		float fSize = m_beginPos.y - endPos.y > fArrowScalingRatio ? m_beginPos.y - endPos.y : fArrowScalingRatio;
+		fSize = fSize / fArrowScalingRatio;
 		m_pDottedLineSprite->setScaleX(fSize);
 	}
 	else
@@ -89,32 +91,57 @@ void FortNode::setArrowRotation(const cocos2d::Vec2& Pos)
 		m_pDottedLineSprite->setScaleX(1);
 	}
 	// 计算传入的向量
-	Point vec2 = ccpNormalize(ccpSub(endPos, m_beginPos));
+	Point vec2 = -ccpNormalize(ccpSub(endPos, m_beginPos));
 	// 获取弧度
 	m_fArrowRadian = ccpAngle(vec2, m_startVector);
 
 	// 弧度转换角度
 	float fRotation = CC_RADIANS_TO_DEGREES(m_fArrowRadian);
-	// CCLOG("fRotation(%f)", fRotation);
-	m_pArrowSprite->setRotation(fRotation);
-	if (fRotation < 20.0f || fRotation > 160.0f)
-	{
-		// 不符合射击角度 透明度为0
-		m_pArrowSprite->setOpacity(0);
-		m_pDottedLineSprite->setOpacity(0);
-	}
-	else
-	{
-		m_pArrowSprite->setOpacity(255);
-		// 获取block的HP
-		float fNum = GameDeploy::getInstance()->getBlockHP();
-		fNum = 50 > fNum ? fNum : 50;
-		fNum = (50 - fNum) / 50.0f;
-		m_pDottedLineSprite->setOpacity(fNum * 255);
-	}
+	/*
+	* @brief 射击角度错误取消射击模式
+	*/
+	//if (fRotation < 20.0f || fRotation > 160.0f)
+	//{
+	//	// 不符合射击角度 透明度为0
+	//	m_pArrowSprite->setOpacity(0);
+	//	m_pDottedLineSprite->setOpacity(0);
+	//}
+	//{
+	//	m_pArrowSprite->setOpacity(255);
+	//	// 获取block的HP
+	//	float fNum = GameDeploy::getInstance()->getBlockHP();
+	//	fNum = 50 > fNum ? fNum : 50;
+	//	fNum = (50 - fNum) / 50.0f;
+	//	m_pDottedLineSprite->setOpacity(fNum * 255);
+	//}
+	// m_pArrowSprite->setRotation(fRotation);
+	handleShootAngle(fRotation);
 }
 
 float FortNode::getArrowRadian()
 {
 	return m_fArrowRadian;
+}
+
+void FortNode::handleShootAngle(float fAngle)
+{
+	// 获取箭头的极限角度
+	auto fArrowLimitAngle = GameDeploy::getInstance()->getArrowLimitAngle();
+	if (fAngle < fArrowLimitAngle)
+	{
+		fAngle = fArrowLimitAngle;
+	}
+	else if (fAngle > 180 - fArrowLimitAngle)
+	{
+		fAngle = 180 - fArrowLimitAngle;
+	}
+	m_fArrowRadian = CC_DEGREES_TO_RADIANS(fAngle);
+	m_pArrowSprite->setRotation(fAngle);
+
+	m_pArrowSprite->setOpacity(255);
+	// 获取block的HP
+	float fNum = GameDeploy::getInstance()->getBlockHP();
+	fNum = 50 > fNum ? fNum : 50;
+	fNum = (50 - fNum) / 50.0f;
+	m_pDottedLineSprite->setOpacity(fNum * 255);
 }

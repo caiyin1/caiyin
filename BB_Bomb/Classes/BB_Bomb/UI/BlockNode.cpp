@@ -46,7 +46,7 @@ bool BlockNode::initWithData(const BlockData& blockData)
 			m_pHPLabel->setPosition(_contentSize.width * 0.45f, _contentSize.height * 0.4f);
 			m_pHPLabel->setColor(Color3B::BLACK);
 			m_pBlockSprite->addChild(m_pHPLabel);
-
+			setBlockTag(BLOCK_TAG_NUM);
 			break;
 		}
 		case BlockData::Type::Type_Triangle:
@@ -55,24 +55,29 @@ bool BlockNode::initWithData(const BlockData& blockData)
 			blockSize = m_pBlockSprite->getContentSize();
 			int nNum = random(1, 4);
 			handleTriangle(nNum);
-#if COCOS2D_VERSION 0x00030330
+#if COCOS2D_VERSION <= 0x00030330
+			// 3.3刚体会随着精灵旋转
 			nNum = 1;
 #endif
 			initTriangle(nNum, blockSize);
-			// 3.15刚体不可选择
+			setBlockTag(BLOCK_TAG_NUM);
 			break;
 		}
-		case BlockData::Type::Type_LeftHalf:
+		case BlockData::Type::Type_Octagon:
 		{
 
+			initOctagon();
+			break;
+		}
+		case BlockData::Type::Type_BlackHole:
+		{
+			initBlackHole();
 			break;
 		}
 		}
 
-		m_pBlockBody->setTag(BLOCK_TAG_NUM);
-		setTag(BLOCK_TAG_NUM);
 		// 设置遮掩码
-		// 设置类别表示遮掩码  0010
+	// 设置类别表示遮掩码  0010
 		m_pBlockBody->setCategoryBitmask(2);
 		// 设置接触测试遮掩码
 		m_pBlockBody->setContactTestBitmask(4);
@@ -172,4 +177,55 @@ void BlockNode::handleTriangle(int nNum)
 		break;
 	}
 
+}
+
+void BlockNode::initOctagon()
+{
+	float fScale = 0.7f;
+	m_pBlockSprite = Sprite::create("res/BB_Bomb/Image/bb_octagon.png");
+	// m_pBlockSprite->setOpacity(0.3f * 255);
+	auto blockSize = m_pBlockSprite->getContentSize();
+	Point point[8] = { Point(-blockSize.width * fScale, -blockSize.height) * 0.5f, Point(-blockSize.width, -blockSize.height * fScale) * 0.5f,
+						Point(-blockSize.width, blockSize.height * fScale) * 0.5f, Point(-blockSize.width * fScale, blockSize.height) * 0.5f,
+						Point(blockSize.width * fScale, blockSize.height) * 0.5f, Point(blockSize.width, blockSize.height * fScale) * 0.5f,
+						Point(blockSize.width, -blockSize.height * fScale) * 0.5f, Point(blockSize.width * fScale, -blockSize.height) * 0.5f };
+	m_pBlockBody = PhysicsBody::createPolygon(point, 8, PhysicsMaterial(0.0f, 1.0f, 0.0f));
+	m_pBlockSprite->setPhysicsBody(m_pBlockBody);
+
+	// 设置字体位置
+	m_pHPLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	m_pHPLabel->setPosition(_contentSize.width * 0.45f, _contentSize.height * 0.4f);
+	m_pHPLabel->setColor(Color3B::BLACK);
+	m_pBlockSprite->addChild(m_pHPLabel);
+
+	setBlockTag(BLOCK_TAG_NUM);
+}
+
+void BlockNode::initBlackHole()
+{
+	m_pBlockSprite = Sprite::create("res/BB_Bomb/Image/bb_black_hole.png");
+	auto blockSize = m_pBlockSprite->getContentSize();
+
+	m_pBlockBody = PhysicsBody::createCircle(blockSize.width * 0.5f, PhysicsMaterial(0, 1.0f, 0));
+	m_pBlockSprite->setPhysicsBody(m_pBlockBody);
+	m_pBlockSprite->setColor(Color3B::BLUE);
+
+	// 设置字体位置
+	m_pHPLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	m_pHPLabel->setPosition(_contentSize.width * 0.45f, _contentSize.height * 0.4f);
+	m_pHPLabel->setColor(Color3B::BLACK);
+	m_pBlockSprite->addChild(m_pHPLabel);
+
+	setBlockTag(BLACK_HOLE_TAG_NUM);
+}
+
+BlockData::Type BlockNode::getBlockType()
+{
+	return m_BlockData.m_eType;
+}
+
+void BlockNode::setBlockTag(int nNum)
+{
+	m_pBlockBody->setTag(nNum);
+	setTag(nNum);
 }

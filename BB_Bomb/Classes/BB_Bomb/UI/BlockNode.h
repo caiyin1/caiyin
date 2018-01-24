@@ -19,6 +19,10 @@ public:
 	* @brief 获取Block的HP
 	*/
 	int getBLockHp();
+	/*
+	* @brief 获取Block的类别
+	*/
+	BlockData::Type getBlockType();
 private:
 	/*
 	* @brief 创建3角形刚体
@@ -28,6 +32,18 @@ private:
 	* @brief 处理三角形旋转和填加Hp位置
 	*/
 	void handleTriangle(int nNum);
+	/*
+	* @brief 创建八边体
+	*/
+	void initOctagon();
+	/*
+	* @brief 创建黑洞
+	*/
+	void initBlackHole();
+	/*
+	* @brief 设置Block的tag
+	*/
+	void setBlockTag(int nNum);
 private:
 	BlockData m_BlockData;
 	cocos2d::Sprite* m_pBlockSprite = nullptr;

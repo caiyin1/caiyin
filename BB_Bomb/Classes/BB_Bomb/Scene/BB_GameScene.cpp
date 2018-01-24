@@ -9,6 +9,7 @@
 #include "../UI/FoodNode.h"
 #include "../Util/gbk2utf8.h"
 #include "../Util/ColorUtil.h"
+#include "../UI/ActionFactoryNode.h"
 #include "extensions/cocos-ext.h"  
 USING_NS_CC_EXT;
 USING_NS_CC;
@@ -186,7 +187,7 @@ void BB_GameScene::onStartGameEvent(cocos2d::EventCustom* event)
 
 void BB_GameScene::initGameData()
 {
-	m_nScore = 1;
+	m_nBombNum = m_nScore = 1;
 	m_nMoveBombNum = 0;
 	m_nAlreadyShootBombNum = 0;
 	m_nTimer = 0;
@@ -228,7 +229,6 @@ void BB_GameScene::initGameLayer()
 	m_pBombNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 	m_pBombNode->setPosition(_contentSize * 0.5f);
 	m_pGameLayer->addChild(m_pBombNode);
-	//// 添加一个子弹
 	// 获取屏幕缩放比
 	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
 	// 初始化食物Node
@@ -236,19 +236,33 @@ void BB_GameScene::initGameLayer()
 	m_pFoodNode->setContentSize(_contentSize);
 	m_pFoodNode->setPosition(_contentSize * 0.5f);
 	m_pFoodNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	m_pGameLayer->addChild(m_pFoodNode);
+	m_pGameLayer->addChild(m_pFoodNode, 2);
 	// 初始化Block的Node
 	m_pBlockNode = Node::create();
 	m_pBlockNode->setContentSize(_contentSize);
 	m_pBlockNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 	m_pBlockNode->setPosition(_contentSize * 0.5f);
 	m_pGameLayer->addChild(m_pBlockNode);
+	// 初始化BlackHole的Node
+	m_pBlackHoleNode = Node::create();
+	m_pBlackHoleNode->setContentSize(_contentSize);
+	m_pBlackHoleNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	m_pBlackHoleNode->setPosition(_contentSize * 0.5f);
+	m_pGameLayer->addChild(m_pBlackHoleNode);
+
 	// 初始化玩家得分Label
+	float fLenght = 20 / fScalingRatio;
 	m_pScoreLabel = Label::createWithBMFont(NUM_FILE, StringUtils::format("score : %d", m_nScore));
 	m_pScoreLabel->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
-	m_pScoreLabel->setPosition(_contentSize.width - 20 / fScalingRatio, _contentSize.height - 20 / fScalingRatio);
+	m_pScoreLabel->setPosition(_contentSize.width - fLenght, _contentSize.height - fLenght);
 	m_pScoreLabel->setColor(Color3B::WHITE);
 	m_pGameLayer->addChild(m_pScoreLabel);
+	auto scoreLabelSize = m_pScoreLabel->getContentSize();
+	// 初始化玩家子弹的数量
+	m_pBombNumLabel = Label::createWithSystemFont(bailinText(StringUtils::format("子弹 : %d", m_nBombNum)), FNT_NAME, 50 / fScalingRatio);
+	m_pBombNumLabel->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
+	m_pBombNumLabel->setPosition(_contentSize.width - scoreLabelSize.width - 3 * fLenght, _contentSize.height - fLenght);
+	m_pGameLayer->addChild(m_pBombNumLabel);
 	// 初始化边界线
 	// 上边界线
 	auto pTopDraw = DrawNode::create();
@@ -341,7 +355,7 @@ void BB_GameScene::update(float dt)
 	// 判断是否开启子弹回收按钮
 	if (gameStatus == GameStatusManager::GameStatus::kStatus_Runnning)
 	{
-		setRecyclingBombEnable(true); 
+		setRecyclingBombEnable(true);
 	}
 	else
 	{
@@ -384,8 +398,7 @@ void BB_GameScene::onTouchEnded(cocos2d::Touch* touch, cocos2d::Event* ev)
 	// 开启炮台的移动
 	m_bMoveFort = true;
 	// 设置飞行的子弹
-	m_nMoveBombNum = m_nScore;
-	CCLOG("m_nMoveBombNum (%f)", m_nMoveBombNum);
+	m_nMoveBombNum = pFortMangager->getBombSize();
 }
 
 bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
@@ -440,7 +453,6 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			pParticleRatio->setStartColorVar(Color4F(getBlockColorWithNumer(nNum)));
 			pParticleRatio->setPosition(pos);
 			pParticleRatio->setCascadeColorEnabled(true);
-			// pParticleRatio->setEndColorVar(Color4F(getBlockColorWithNumer(random(0, 60))));
 			pParticleRatio->setScale(1 / fScalingRatio);
 			pParticleRatio->setLife(4);
 			pParticleRatio->setAutoRemoveOnFinish(true);
@@ -461,8 +473,16 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			pGameStatus->setGameStatus(GameStatusManager::GameStatus::kStatus_AddBack);
 			// 清空数据
 			pBombDataManager->clearFlyBomb();
+			// 处理黑洞Block
+			handleBlackHoleBlack();
 		}
 		a->setVelocity(Vec2(0, 0));
+		// 关闭刚体
+#if COCOS2D_VERSION <= 0x0030330
+		a->setEnable(false);
+#else
+		a->setEnabled(false);
+#endif;
 		// 移动炮台
 		if (m_bMoveFort)
 		{
@@ -486,7 +506,7 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			auto pBombNode = dynamic_cast<BombNode*>(a->getNode());
 			// 从飞行的子弹数组中删除这个子弹
 			pBombDataManager->removeFlyBombToVector(pBombNode);
-
+			if (pBombNode == nullptr)	break;
 			pBombNode->setBombStatus(BombNode::BombStatus::Status_MoveTo);
 			ActionInterval* pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio));
 			auto delayTime = DelayTime::create(0.1f);
@@ -499,10 +519,48 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 	{
 		if (pNode == NULL) break;;
 		auto pFoodNode = dynamic_cast<FoodNode*>(pNode->getParent());
-		pFoodNode->removeFromParent();
+		// 关闭刚体
+		pFoodNode->setBodyEnabled(false);
+		auto pos = pFoodNode->getPosition();
+		// 添加消失动画
+		auto pFoodAnctionSprite = ActionFactoryNode::create(1);
+		auto pFoodAnctionSpriteRect = pFoodAnctionSprite->getBoundingBox();
+		pFoodAnctionSprite->setPosition(Vec2(pos.x - pFoodAnctionSpriteRect.size.width, pos.y));
+		m_pFoodNode->addChild(pFoodAnctionSprite, 20);
+		// 删除原来的食物
+		pFoodNode->reomveFoodNode();
 		// 得分加一
 		m_nScore++;
 		m_pScoreLabel->setString(StringUtils::format("score : %d", m_nScore));
+		// 子弹数量加一
+		m_pBombNumLabel->setString(bailinText(StringUtils::format("子弹 : %d", ++m_nBombNum)));
+	}
+	break;
+	case BLACK_HOLE_TAG_NUM:
+	{
+		if (pNode == nullptr)
+		{
+			break;
+		}
+		auto pBlockNode = dynamic_cast<BlockNode*>(pNode->getParent());
+		pBlockNode->hitted();
+		// 获取Block的Hp
+		auto nHp = pBlockNode->getBLockHp();
+		if (nHp <= 0)
+		{
+			auto pos = pBlockNode->getPosition();
+			pBlockNode->removeFromParent();
+			// 播放爆炸效果
+			auto pParticleRatio = ParticleSystemQuad::create("res/BB_Bomb/particle/bb_block_explode.plist");
+			auto nNum = random(0, 60);
+			pParticleRatio->setStartColorVar(Color4F(getBlockColorWithNumer(nNum)));
+			pParticleRatio->setPosition(pos);
+			pParticleRatio->setCascadeColorEnabled(true);
+			pParticleRatio->setScale(1 / fScalingRatio);
+			pParticleRatio->setLife(4);
+			pParticleRatio->setAutoRemoveOnFinish(true);
+			addChild(pParticleRatio);
+		}
 	}
 	break;
 	}
@@ -536,7 +594,6 @@ void BB_GameScene::handleShootBomb()
 			if (m_nAlreadyShootBombNum < pFortDataManger->getBombSize())
 			{
 				// 获取炮台的位置
-				// auto fX = m_pFortNode->getPositionX();
 				auto pBombNode = vBomb[m_nAlreadyShootBombNum];
 				pBombNode->setBombSpeed(bombSpeed);
 				pBombNode->setBombStatus(BombNode::BombStatus::Status_Move);
@@ -589,6 +646,9 @@ void BB_GameScene::addBackgroundCallBack(cocos2d::Node* pNode)
 	case FOOD_TAG_NUM:
 		m_pFoodNode->addChild(pNode);
 		break;
+	case BLACK_HOLE_TAG_NUM:
+		m_pBlackHoleNode->addChild(pNode);
+		break;
 	default:
 		break;
 	}
@@ -618,6 +678,23 @@ void BB_GameScene::handleRollScreen()
 			// 游戏结束 
 			handleGameOver();
 			return;
+		}
+	}
+
+	// 下移动黑洞
+	auto vBlackHole = m_pBlackHoleNode->getChildren();
+	for (int i = 0; i < vBlackHole.size(); i++)
+	{
+		auto pBlackHoleNode = vBlackHole.at(i);
+		auto blackHolePos = pBlackHoleNode->getPosition();
+		float fY = blackHolePos.y - fSize;
+		auto pMoveTo = MoveTo::create(1, Vec2(blackHolePos.x, fY));
+		auto delayTime = DelayTime::create(0.5f);
+		auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
+		pBlackHoleNode->runAction(seq);
+		if (fY <= _contentSize.height * SCREEN_BUTTOM_COFFICIENT)
+		{
+			pBlackHoleNode->removeFromParent();
 		}
 	}
 
@@ -656,7 +733,7 @@ void BB_GameScene::handleAddBomb()
 	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
 	auto pos = FortDataManager::getInstance()->getForPosition();
 	// 创建子弹
-	for (int i = vBomb.size(); i < m_nScore; i++)
+	for (int i = vBomb.size(); i < m_nBombNum; i++)
 	{
 		auto pBombSprite = BombDataManager::getInstance()->addBombNode();
 		pBombSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
@@ -767,7 +844,7 @@ void BB_GameScene::handleGameOver()
 	pS9ScoreBomb->addChild(pCrownSprite);
 
 	// 关闭update
-	unscheduleUpdate();
+	// unscheduleUpdate();
 }
 
 void BB_GameScene::menuHomeCallBack(cocos2d::Ref* spender)
@@ -843,9 +920,14 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 	for (auto i = 0; i < vFlyBomb.size(); i++)
 	{
 		auto pBombSprite = vFlyBomb[i];
+		pBombSprite->setBombSpeed(Vec2(0, 0));
+#if COCOS2D_VERSION <= 0x0030330
+		pBombSprite->getPhysicsBody()->setEnable(false);
+#else
+		pBombSprite->getPhysicsBody()->setEnabled(false);
+#endif
 		auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * SCREEN_BUTTOM_COFFICIENT + 20 / fScalingRatio));
 		pBombSprite->runAction(pMoveTo);
-		pBombSprite->setBombSpeed(Vec2(0, 0));
 	}
 	m_nMoveBombNum = 0;
 	// 清空飞行Bomb数组数据
@@ -854,6 +936,8 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 	pGameStatus->setGameStatus(GameStatusManager::GameStatus::kStatus_AddBack);
 	// 关闭按钮
 	setRecyclingBombEnable(false);
+	// 处理黑洞Block
+	handleBlackHoleBlack();
 }
 
 void BB_GameScene::createRecyclingBombButton()
@@ -880,7 +964,7 @@ void BB_GameScene::createRecyclingBombButton()
 
 void BB_GameScene::setRecyclingBombEnable(const bool& b)
 {
-	if ( m_pRecyclingButton == nullptr)
+	if (m_pRecyclingButton == nullptr)
 	{
 		return;
 	}
@@ -893,4 +977,43 @@ void BB_GameScene::setRecyclingBombEnable(const bool& b)
 		m_pRecyclingButton->setOpacity(0.5f * 255);
 	}
 	m_pRecyclingButton->setEnabled(b);
+}
+
+void BB_GameScene::handleBlackHoleBlack()
+{
+	auto vBlackHole = m_pBlackHoleNode->getChildren();
+	// 获取子弹管理类
+	auto pBombManager = BombDataManager::getInstance();
+	// 获取屏幕缩放比
+	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
+	for (int i = 0; i < vBlackHole.size(); i++)
+	{
+		auto pNode = vBlackHole.at(i);
+		auto pBlackHoleNode = dynamic_cast<BlockNode*> (pNode);
+		auto pos = pBlackHoleNode->getPosition();
+		// 删除黑洞Blockk
+		pBlackHoleNode->removeFromParent();
+		// 添加粒子爆炸效果
+		// auto pParticleRatio = ParticleSystemQuad::create("res/BB_Bomb/particle/bb_black_hole_explode.plist");
+		auto pParticleRatio = ParticleSystemQuad::create("res/BB_Bomb/particle/bb_block_explode.plist");
+		auto nNum = random(0, 60);
+		pParticleRatio->setStartColorVar(Color4F(getBlockColorWithNumer(nNum)));
+		pParticleRatio->setPosition(pos);
+		pParticleRatio->setCascadeColorEnabled(true);
+		pParticleRatio->setScale(1 / fScalingRatio);
+		pParticleRatio->setLife(4);
+		pParticleRatio->setAutoRemoveOnFinish(true);
+		m_pGameLayer->addChild(pParticleRatio);
+
+		auto pBombActuon = ActionFactoryNode::create(-1);
+		pBombActuon->setPosition(pos);
+		m_pGameLayer->addChild(pBombActuon, 2);
+
+		// 删除子弹
+		pBombManager->removeBomb();
+		// 子弹数量减一
+		// 刷新子弹个数
+		m_nBombNum = FortDataManager::getInstance()->getBombSize();
+		m_pBombNumLabel->setString(bailinText(StringUtils::format("子弹 : %d", m_nBombNum)));
+	}
 }

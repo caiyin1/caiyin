@@ -12,14 +12,6 @@
 // 屏幕上边界系数
 #define  SCREEN_TOP_COFFICIENT 0.9f
 
-// 字体
-#if defined(CC_PLATFORM_IOS) || defined(CC_PLATFORM_MAC)
-#   define FNT_NAME "Helvetica Bold"
-#else
-#   define FNT_NAME "Arial"
-#endif
-
-
 class BB_GameScene : cocos2d::Scene
 {
 public:
@@ -126,6 +118,10 @@ private:
 	*/
 	void handleGameOver();
 	/*
+	* @brief 处理黑洞Block
+	*/
+	void handleBlackHoleBlack();
+	/*
 	* @brief 清除刚体
 	*/
 	void clearPhysicsBody();
@@ -146,8 +142,12 @@ private:
 	cocos2d::Node* m_pBlockNode = nullptr;
 	// 添加食物的Node
 	cocos2d::Node* m_pFoodNode = nullptr;
+	// 添加黑洞Block的Node
+	cocos2d::Node* m_pBlackHoleNode = nullptr;
 	// 得分的Label
 	cocos2d::Label* m_pScoreLabel = nullptr;
+	// 玩家子弹的数量
+	cocos2d::Label* m_pBombNumLabel = nullptr;
 	// 回收子弹的按钮
 	cocos2d::MenuItemImage* m_pRecyclingButton = nullptr;
 	// 游戏结算Layer
@@ -169,6 +169,8 @@ private:
 	int m_nAlreadyShootBombNum;
 	// 判断是否要移动炮台
 	bool m_bMoveFort;
+	// 子弹的数量
+	int m_nBombNum;
 };
 
 

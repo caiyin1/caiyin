@@ -3,6 +3,7 @@
 #include "../UI/BlockNode.h"
 #include "../UI/FoodNode.h"
 #include "GameStatusManager.h"
+#include "FortDataManager.h"
 USING_NS_CC;
 
 static BackgroundDataManager* s_global = nullptr;
@@ -27,11 +28,16 @@ void BackgroundDataManager::addBackData()
 {
 	// 获取生成块块的概率
 	auto pGameDeploy = GameDeploy::getInstance();
+	// 获取正方形的身材概率
 	float fNomeBlockProBaility = pGameDeploy->getAddNomeBlockProbaility();
-
-	float fRightBlockProBaility = pGameDeploy->getRightBlockAddProbaility();
+	// 获取三角形的生成概率
+	float fTriangleBlockProBaility = pGameDeploy->getTriangleBlockAddProbaility();
+	// 获取黑洞的生成概率
+	float fBlackHoleProbaility = pGameDeploy->getBlackHoleBlockAddProbaility();
 	// 获取块块的生命值
 	int nBLockHP = pGameDeploy->getBlockHP();
+	// 获取子弹的数量
+	int nBombSize = FortDataManager::getInstance()->getBombSize();
 	// 增加难度
 	if (nBLockHP % 10 == 0)
 	{
@@ -53,14 +59,14 @@ void BackgroundDataManager::addBackData()
 			{
 				blockData.m_nHP = 2 * blockData.m_nHP;
 			}
-			blockData.m_eType = BlockData::Type::Type_Nome;
+			blockData.m_eType = BlockData::Type::Type_Octagon;
 			// 添加Block
 			auto pBlockNode = BlockNode::create(blockData);
 			pBlockNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 			pBlockNode->setPositionX(fSize * i + fSize*0.5f);
 			m_callbackAddBackground(pBlockNode);
 		}
-		else if (nNum < fRightBlockProBaility)
+		else if (nNum < fTriangleBlockProBaility)
 		{
 			BlockData blockData;
 			blockData.m_nHP = nBLockHP;
@@ -73,6 +79,21 @@ void BackgroundDataManager::addBackData()
 			auto pBlockNode = BlockNode::create(blockData);
 			pBlockNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 			pBlockNode->setPositionX(fSize * i + fSize*0.5f);
+			m_callbackAddBackground(pBlockNode);
+		}
+		else if (nNum < fBlackHoleProbaility)
+		{
+
+			if (nBombSize < 1 || nBLockHP < 10)
+			{
+				return;
+			}
+			BlockData blockData;
+			blockData.m_nHP = nBombSize / 2;
+			blockData.m_eType = BlockData::Type::Type_BlackHole;
+			auto pBlockNode = BlockNode::create(blockData);
+			pBlockNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+			pBlockNode->setPositionX(fSize * i + fSize * 0.5f);
 			m_callbackAddBackground(pBlockNode);
 		}
 		else

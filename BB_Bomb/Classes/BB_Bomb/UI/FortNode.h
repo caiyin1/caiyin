@@ -29,7 +29,10 @@ public:
 	*/
 	float getArrowRadian();
 private:
-
+	/*
+	* @brief 锁死射击角度
+	*/
+	void handleShootAngle(float fAngle);
 private:
 	cocos2d::Sprite* m_pFortSprite = nullptr;
 	cocos2d::Sprite* m_pArrowSprite = nullptr;

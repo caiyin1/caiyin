@@ -60,3 +60,16 @@ void FoodNode::reomveFoodNode()
 {
 	this->removeFromParent();
 }
+
+void FoodNode::setBodyEnabled(bool b)
+{
+	if (m_pFoodBody == nullptr)
+	{
+		return;
+	}
+#if COCOS2D_VERSION <= 0x0030330
+	m_pFoodBody->setEnable(b);
+#else
+	m_pFoodBody->setEnabled(b);
+#endif
+}

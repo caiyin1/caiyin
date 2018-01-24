@@ -16,19 +16,25 @@ void GameDeploy::init()
 
 	// 初始化游戏数据
 	// 正常块块的生成概率
-	m_fNomeBlockAddProbaility = 30;
-	// 右三角形块块生成概率
-	m_fRightBlockAddProBaility = 10;
+	m_fNomeBlockAddProbaility = 25;
+	// 三角形块块生成概率
+	m_fTriangleBlockAddProBaility = 10;
+	// 黑洞块块的生成概率
+	m_fBlackHoleBlockAddProBaility = 5;
 	// Block的 生命值
 	m_nBlockHP = 1;
 	// 食物的生成概率
-	m_fAddFoodProbaility = 30;
+	m_fAddFoodProbaility = 50;
 	// 子弹发送时间间隔
 	m_nBombLaunchTimer = 4;
 	// 偏移放大量
 	m_fMoveScalingRatio = 2;
 	// 子弹速度
 	m_fBombSpeed = 1000;
+	// 箭头缩放比
+	m_fArrowScalingRatio = 20;
+	// 箭头的极限角度
+	m_fArrowLimitAngle = 20;
 }
 
 
@@ -78,19 +84,25 @@ float GameDeploy::getBombSpeed()
 	return m_fBombSpeed;
 }
 
-float GameDeploy::getRightBlockAddProbaility()
+float GameDeploy::getTriangleBlockAddProbaility()
 {
-	return m_fRightBlockAddProBaility + m_fNomeBlockAddProbaility;
+	return m_fTriangleBlockAddProBaility + m_fNomeBlockAddProbaility;
+}
+
+
+float GameDeploy::getBlackHoleBlockAddProbaility()
+{
+	return m_fBlackHoleBlockAddProBaility + m_fTriangleBlockAddProBaility + m_fNomeBlockAddProbaility;
 }
 
 void GameDeploy::addGameDifficult()
 {
-	if (m_fNomeBlockAddProbaility > 50)
+	if (m_fNomeBlockAddProbaility > 45)
 	{
 		return;
 	}
 	m_fNomeBlockAddProbaility += 2;
-	m_fRightBlockAddProBaility += 1;
+	m_fTriangleBlockAddProBaility += 1;
 
 }
 
@@ -107,4 +119,14 @@ void GameDeploy::setGameColumnNun(float fSize)
 int GameDeploy::getGameColumnNum()
 {
 	return m_nGameColumnNum;
+}
+
+float GameDeploy::getArrowScalingRatio()
+{
+	return m_fArrowScalingRatio / m_fScalingRatio;
+}
+
+float GameDeploy::getArrowLimitAngle()
+{
+	return m_fArrowLimitAngle;
 }

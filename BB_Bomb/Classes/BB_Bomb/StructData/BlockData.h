@@ -9,10 +9,12 @@ public:
 	{
 		// 正常
 		Type_Nome,
-		// 左半边
-		Type_LeftHalf,
-		// 右半边
-		Type_Triangle
+		// 八边形
+		Type_Octagon,
+		// 三角形 
+		Type_Triangle,
+		// 黑洞
+		Type_BlackHole
 	};
 	// 块块生命值
 	int m_nHP;
