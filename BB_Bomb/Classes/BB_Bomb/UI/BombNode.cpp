@@ -22,13 +22,15 @@ bool BombNode::init()
 	do
 	{
 		CC_BREAK_IF(!Node::init());
-		m_pBombSprite = Sprite::create("res/BB_Bomb/Image/bb_Bomb.png");
+		// m_pBombSprite = Sprite::create("res/BB_Bomb/Image/bb_bomb.png");
+		m_pBombSprite = Sprite::create("res/BB_Bomb/Image/balls/default.png");
 		auto bombSize = m_pBombSprite->getContentSize();
 		setContentSize(bombSize);
 		m_pBombSprite->setPosition(_contentSize * 0.5f);
 		initBombPhysicsBody();
 		addChild(m_pBombSprite);
 		m_eBombStatus = BombStatus::Status_Sleep;
+		m_pBombSprite->setScale(0.80f);
 		bRet = true;
 	} while (0);
 	return bRet;

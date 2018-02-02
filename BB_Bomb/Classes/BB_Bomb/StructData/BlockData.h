@@ -7,14 +7,16 @@ public:
 	// 块块属性
 	enum class Type
 	{
-		// 正常
-		Type_Nome,
+        // 无形状
+        Type_None,
+        // 正方形
+        Type_Cube,
 		// 八边形
 		Type_Octagon,
 		// 三角形 
 		Type_Triangle,
 		// 黑洞
-		Type_BlackHole
+		Type_BlackHole,
 	};
 	// 块块生命值
 	int m_nHP;

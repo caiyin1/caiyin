@@ -2,6 +2,9 @@
 #define __BB_GAME_SCENE_H__
 #include "cocos2d.h"
 #include "../UI/FortNode.h"
+#include "../UI/BombNode.h"
+#include "../../bailinUtils/DialogLayer.h"
+#include "../Manager/GameStatusManager.h"
 
 // 游戏开始事件名  
 #define START_GAME_EVENT  "StartGameEvent" 
@@ -56,6 +59,18 @@ private:
 	* @brief 回收飞行中的子弹
 	*/
 	void menuRecyclingBombCallBack(cocos2d::Ref* spender);
+	/*
+	* @brief 动画结束回调隐藏子弹,
+	*/
+	void hideBombCallBack(cocos2d::Ref* spender, BombNode* pBombNode);
+	/*
+	* @brief 回调改变游戏状态
+	*/
+	void setGameStatusCallBack(cocos2d::Ref* spender, const GameStatusManager::GameStatus& eStatus);
+	/*
+	* @brief 回调保存游戏
+	*/
+	void onSaveGameScheduleCallBack(cocos2d::Ref* spender);
 private:
 	/*
 	* @brief 游戏开始事件调用 初始话游戏数据
@@ -82,6 +97,10 @@ private:
 	*/
 	bool onContactBegin(cocos2d::PhysicsContact& contac);
 	/*
+	* @brief 对玩家分数Label进行缩放
+	*/
+	void handleScaleScoreLabel();
+	/*
 	* @brief 创建背景回调函数
 	*/
 	void addBackgroundCallBack(cocos2d::Node* pNode);
@@ -101,6 +120,10 @@ private:
 	* @brief 处理子弹的发射
 	*/
 	void handleShootBomb();
+	/*
+	* @brief 获取炮口在主界面的位置, 在handleShootBomb()中调用
+	*/
+	const cocos2d::Vec2& getFortTopPos();
 	/*
 	* @brief 处理Block的生成
 	*/
@@ -151,7 +174,7 @@ private:
 	// 回收子弹的按钮
 	cocos2d::MenuItemImage* m_pRecyclingButton = nullptr;
 	// 游戏结算Layer
-	cocos2d::Layer* m_pGameOverLayer = nullptr;
+	bailin::ui::DialogLayer::Layer* m_pGameOverLayer = nullptr;
 	// 触摸监听器
 	cocos2d::EventListenerTouchOneByOne* m_pEventListenerTouch = nullptr;
 private:
@@ -171,6 +194,8 @@ private:
 	bool m_bMoveFort;
 	// 子弹的数量
 	int m_nBombNum;
+	// 得分Label的缩放比例
+	float m_fScoreLabelScale;
 };
 
 

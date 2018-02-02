@@ -11,8 +11,12 @@
 #include "../Util/ColorUtil.h"
 #include "../UI/ActionFactoryNode.h"
 #include "extensions/cocos-ext.h"  
+
+#include "PhysicsShapeCache.h"
+
 USING_NS_CC_EXT;
 USING_NS_CC;
+
 
 /*
 * @brief 根据点数得到不同的颜色
@@ -59,13 +63,22 @@ bool BB_GameScene::init()
 		GameDeploy::getInstance()->setGameColumnNun(_contentSize.width);
 		// 添加一个游戏开始自定义事件
 		_eventDispatcher->addCustomEventListener(START_GAME_EVENT, CC_CALLBACK_1(BB_GameScene::onStartGameEvent, this));
+		// 添加保存记录事件回调函数
+		_eventDispatcher->addCustomEventListener(SAVE_GAME_SCHEDULE_EVENT, CC_CALLBACK_1(BB_GameScene::onSaveGameScheduleCallBack, this));
 		// 开启碰撞回调事件回调函数
 		auto contactListener = EventListenerPhysicsContact::create();
 		contactListener->onContactBegin = CC_CALLBACK_1(BB_GameScene::onContactBegin, this);
 		_eventDispatcher->addEventListenerWithSceneGraphPriority(contactListener, this);
+
+
 		// 设置添加背景回调函数
 		BackgroundDataManager::getInstance()->setAddBackgroundCallBack(CC_CALLBACK_1(BB_GameScene::addBackgroundCallBack, this));
+
+
 		initHomeLayer();
+
+		// 初始化刚体缓存
+		PhysicsShapeCache::getInstance()->addShapesWithFile("res/BB_Bomb/PhysicsBody/physics.plist", CC_CONTENT_SCALE_FACTOR());
 		bRet = true;
 	} while (0);
 	return bRet;
@@ -76,6 +89,12 @@ void BB_GameScene::onEnter()
 	Scene::onEnter();
 
 	createTouchListener();
+	// 创建背景补边
+	auto pS9BackgroundMakeUp = ui::Scale9Sprite::create("res/BB_Bomb/Image/bb_background_make_up.png");
+	pS9BackgroundMakeUp->setPreferredSize(_contentSize);
+	pS9BackgroundMakeUp->setPosition(_contentSize * 0.5f);
+	addChild(pS9BackgroundMakeUp, -1);
+
 }
 
 void BB_GameScene::createTouchListener()
@@ -87,7 +106,6 @@ void BB_GameScene::createTouchListener()
 	m_pEventListenerTouch->onTouchEnded = CC_CALLBACK_2(BB_GameScene::onTouchEnded, this);
 
 	_eventDispatcher->addEventListenerWithSceneGraphPriority(m_pEventListenerTouch, this);
-
 }
 
 bool BB_GameScene::onTouchBegin(cocos2d::Touch* touch, cocos2d::Event* ev)
@@ -114,9 +132,29 @@ bool BB_GameScene::onTouchBegin(cocos2d::Touch* touch, cocos2d::Event* ev)
 void BB_GameScene::initHomeLayer()
 {
 	m_pHomeLayer = Layer::create();
-	addChild(m_pHomeLayer);
 	// 获取玩家数据
 	auto pUserData = UserDataManager::getInstance();
+
+
+	// 添加背景图片
+	auto pBackgroundSprite = Sprite::create("res/BB_Bomb/Image/bb_home_background.png");
+	auto backgroundRect = pBackgroundSprite->getBoundingBox();
+	pBackgroundSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	pBackgroundSprite->setScale(_contentSize.width / backgroundRect.size.width);
+	// 获取界面尺寸
+	auto interfaceRect = pBackgroundSprite->getBoundingBox();
+	// 设置界面尺寸
+	GameDeploy::getInstance()->setGameLayerSize(interfaceRect.size);
+	// 设置界面的Layer
+	m_pHomeLayer->setContentSize(interfaceRect.size);
+	m_pHomeLayer->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+#if COCOS2D_VERSION > 0x0030330
+	m_pHomeLayer->setIgnoreAnchorPointForPosition(false);
+#else
+	m_pHomeLayer->ignoreAnchorPointForPosition(false);
+#endif
+	m_pHomeLayer->setPosition(_contentSize * 0.5f);
+	addChild(m_pHomeLayer);
 
 	// 添加一个点击任意一处 开始
 	auto pStartMenu = Menu::create();
@@ -125,42 +163,68 @@ void BB_GameScene::initHomeLayer()
 	pStartButton->setCallback(CC_CALLBACK_1(BB_GameScene::menuStartCallBack, this));
 	pStartMenu->addChild(pStartButton);
 	m_pHomeLayer->addChild(pStartMenu);
-	// 添加游戏名称
-	float fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
-	auto pGameNameLabel = Label::createWithSystemFont(bailinText("BB弹"), FNT_NAME, 400 / fScalingRatio);
 
-	pGameNameLabel->setPosition(_contentSize.width * 0.5f, _contentSize.height * 0.8f);
-	m_pHomeLayer->addChild(pGameNameLabel);
-	// 黄冠
-	// 添加历史最高分前面的皇冠
-	auto pCrownSprite = Sprite::create("res/BB_Bomb/Image/bb_crown.png");
-	pCrownSprite->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
-	pCrownSprite->setPosition(10 / fScalingRatio, 0);
-	// 设置颜色
-	pCrownSprite->setColor(Color3B(255, 253, 16));
+	pBackgroundSprite->setPosition(interfaceRect.size * 0.5f);
+	pBackgroundSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	backgroundRect = pBackgroundSprite->getBoundingBox();
+	m_pHomeLayer->addChild(pBackgroundSprite);
+	// 获取背景的Rect
+	backgroundRect = pBackgroundSprite->getBoundingBox();
+	//// 获取屏幕缩放比
+	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
+	// 字体的大小
+	float fFontSize = 30 / fScalingRatio;
+	auto pScoreLabel = Label::createWithSystemFont(bailinText("最高分"), FNT_NAME, fFontSize);
+	auto scoreRect = pScoreLabel->getBoundingBox();
 	// 添加蛇历史最高分
-	auto pHistoryScoreLabel = Label::createWithSystemFont(StringUtils::format("%d", pUserData->getHighScore()), FNT_NAME, 100 / fScalingRatio);
-	pHistoryScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE_RIGHT);
-	pHistoryScoreLabel->setColor(Color3B(255, 253, 16));
-	// 创建一个Node 使score和皇冠永远居中
-	auto pNode = Node::create();
-	// 获取皇冠的boundingBox
-	auto crownRect = pCrownSprite->getBoundingBox();
-	// 获取scoreLabel的boundingBox
-	auto scoreLabelRect = pHistoryScoreLabel->getBoundingBox();
-	// 设置Node的大小时 皇冠和score的长度再加上固定的间距
-	pNode->setContentSize(Size(crownRect.size.width + scoreLabelRect.size.width + 30 / fScalingRatio, crownRect.size.height));
-	pNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	pNode->setPosition(_contentSize.width * 0.5f, _contentSize.height * 0.55f);
-	m_pHomeLayer->addChild(pNode);
-	pHistoryScoreLabel->setPosition(pNode->getContentSize().width, crownRect.size.height * 0.5f);
-	pNode->addChild(pCrownSprite);
-	pNode->addChild(pHistoryScoreLabel);
+	auto nHighScore = pUserData->getHighScore();
+	auto pHistoryScoreLabel = Label::createWithBMFont(GOLDEN_SCORE_BMFNT, StringUtils::format("%d", nHighScore));
+	auto historyScoreRect = pHistoryScoreLabel->getBoundingBox();
+	// 创建存放最高分的Sprite
+	auto pS9HisoryScoreSprite = ui::Scale9Sprite::create("res/BB_Bomb/Image/bb_score_background.png");
+	// 计算Label间的间距
+	float fSpacing = 5 / fScalingRatio;
+	pS9HisoryScoreSprite->setPreferredSize(Size(_contentSize.width * 0.5f, scoreRect.size.height + historyScoreRect.size.height + fSpacing * 2));
+	auto historyScoreNodeSize = pS9HisoryScoreSprite->getContentSize();
+	float fHistoryScoreScale = 1.0f;
+	while (historyScoreRect.size.width + historyScoreRect.size.height * 1.0f > historyScoreNodeSize.width)
+	{
+		pHistoryScoreLabel->setScale(fHistoryScoreScale);
+		fHistoryScoreScale -= 0.01f;
+		historyScoreRect = pHistoryScoreLabel->getBoundingBox();
+	}
+	// 设置Label的位置	
+	pScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE_TOP);
+	pScoreLabel->setPosition(historyScoreNodeSize.width * 0.5f, historyScoreNodeSize.height - fSpacing);
+	pHistoryScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
+	auto fSize = historyScoreNodeSize.width * 0.5f;
+	pHistoryScoreLabel->setPosition(historyScoreNodeSize.width * 0.5f, fSpacing);
+	pHistoryScoreLabel->setPosition(fSize, 0);
+	// 添加label
+	pS9HisoryScoreSprite->addChild(pScoreLabel);
+	pS9HisoryScoreSprite->addChild(pHistoryScoreLabel);
 
-	std::string strTipsImage = "res/BB_Bomb/Image/bb_home_start.png";
-	auto pStartSprite = createPrompt(strTipsImage);
-	pStartSprite->setPosition(_contentSize.width * 0.5f, _contentSize.height * 0.3f);
-	m_pHomeLayer->addChild(pStartSprite);
+	pS9HisoryScoreSprite->setColor(Color3B::BLACK);
+	pS9HisoryScoreSprite->setOpacity(0.5f * 255);
+	pS9HisoryScoreSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	pS9HisoryScoreSprite->setPosition(backgroundRect.size.width * 0.5f, backgroundRect.size.height * 0.22f);
+	m_pHomeLayer->addChild(pS9HisoryScoreSprite);
+
+	// 创建点击任意开始提示
+	auto pStartLabel = Label::createWithSystemFont(bailinText(" > 点击任意开始 < "), FNT_NAME, 30 / fScalingRatio);
+	auto startLabelSize = pStartLabel->getContentSize();
+	auto pS9StartSprite = ui::Scale9Sprite::create("res/BB_Bomb/Image/bb_score_background.png");
+	pS9StartSprite->setPreferredSize(Size(_contentSize.width * 0.5f, startLabelSize.height + 2 * fSpacing));
+	auto s9StartSpriteSize = pS9StartSprite->getContentSize();
+	// 设置提示位置位置
+	pStartLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
+	pStartLabel->setPosition(s9StartSpriteSize.width * 0.5f, fSpacing);
+	pS9StartSprite->addChild(pStartLabel);
+	// 设置提示背景
+	pS9StartSprite->setColor(Color3B::BLACK);
+	pS9StartSprite->setOpacity(0.5f * 255);
+	pS9StartSprite->setPosition(interfaceRect.size.width * 0.5f, interfaceRect.size.height * 0.13f);
+	m_pHomeLayer->addChild(pS9StartSprite);
 }
 
 void BB_GameScene::menuStartCallBack(cocos2d::Ref* spender)
@@ -187,9 +251,12 @@ void BB_GameScene::onStartGameEvent(cocos2d::EventCustom* event)
 
 void BB_GameScene::initGameData()
 {
-	m_nBombNum = m_nScore = 1;
+	m_nBombNum = 1;
+	m_nScore = 1;
 	m_nMoveBombNum = 0;
 	m_nAlreadyShootBombNum = 0;
+	// 得分label的缩放比例
+	m_fScoreLabelScale = 1.0f;
 	m_nTimer = 0;
 	m_bMoveFort = false;
 	// 初始化子弹数据
@@ -212,77 +279,116 @@ void BB_GameScene::onExit()
 
 void BB_GameScene::initGameLayer()
 {
+	// 获取游戏配置
+	auto pGameDeploy = GameDeploy::getInstance();
+	// 获取有效界面尺寸
+	auto interfaceSize = pGameDeploy->getInterfaceSize();
 	m_pGameLayer = Layer::create();
+	m_pGameLayer->setContentSize(interfaceSize);
+	m_pGameLayer->setPosition(_contentSize * 0.5f);
+#if COCOS2D_VERSION > 0x0030330
+	m_pGameLayer->setIgnoreAnchorPointForPosition(false);
+#else
+	m_pGameLayer->ignoreAnchorPointForPosition(false);
+#endif
+	m_pGameLayer->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 	addChild(m_pGameLayer);
+	// 创建背景 
+	auto pGameBackgroundSprite = Sprite::create("res/BB_Bomb/Image/bb_game_background.png");
+	auto gameBackgroundRect = pGameBackgroundSprite->getBoundingBox();
+	pGameBackgroundSprite->setScale(_contentSize.width / gameBackgroundRect.size.width);
+	pGameBackgroundSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	pGameBackgroundSprite->setPosition(interfaceSize * 0.5f);
+	m_pGameLayer->addChild(pGameBackgroundSprite);
+
 	// 创建碰撞边界线刚体
 	createBroundLine();
+
 	// 初始化炮台
 	m_pFortNode = FortNode::create();
 	m_pFortNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
-	m_pFortNode->setPosition(_contentSize.width * 0.5f, _contentSize.height * 0.1f);
-	m_pGameLayer->addChild(m_pFortNode, 2);
+	m_pFortNode->setPosition(interfaceSize.width * 0.5f, 0);
+	m_pGameLayer->addChild(m_pFortNode, 1);
 	// 设置炮台位置
 	FortDataManager::getInstance()->setFortPosition(m_pFortNode->getPosition());
 	// 初始化子弹Node
 	m_pBombNode = Node::create();
-	m_pBombNode->setContentSize(_contentSize);
+	m_pBombNode->setContentSize(interfaceSize);
 	m_pBombNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	m_pBombNode->setPosition(_contentSize * 0.5f);
+	m_pBombNode->setPosition(interfaceSize * 0.5f);
 	m_pGameLayer->addChild(m_pBombNode);
 	// 获取屏幕缩放比
 	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
 	// 初始化食物Node
 	m_pFoodNode = Node::create();
-	m_pFoodNode->setContentSize(_contentSize);
-	m_pFoodNode->setPosition(_contentSize * 0.5f);
+	m_pFoodNode->setContentSize(interfaceSize);
+	m_pFoodNode->setPosition(interfaceSize * 0.5f);
 	m_pFoodNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 	m_pGameLayer->addChild(m_pFoodNode, 2);
 	// 初始化Block的Node
 	m_pBlockNode = Node::create();
-	m_pBlockNode->setContentSize(_contentSize);
+	m_pBlockNode->setContentSize(interfaceSize);
 	m_pBlockNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	m_pBlockNode->setPosition(_contentSize * 0.5f);
+	m_pBlockNode->setPosition(interfaceSize * 0.5f);
 	m_pGameLayer->addChild(m_pBlockNode);
 	// 初始化BlackHole的Node
 	m_pBlackHoleNode = Node::create();
-	m_pBlackHoleNode->setContentSize(_contentSize);
+	m_pBlackHoleNode->setContentSize(interfaceSize);
 	m_pBlackHoleNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	m_pBlackHoleNode->setPosition(_contentSize * 0.5f);
+	m_pBlackHoleNode->setPosition(interfaceSize * 0.5f);
 	m_pGameLayer->addChild(m_pBlackHoleNode);
 
 	// 初始化玩家得分Label
 	float fLenght = 20 / fScalingRatio;
-	m_pScoreLabel = Label::createWithBMFont(NUM_FILE, StringUtils::format("score : %d", m_nScore));
-	m_pScoreLabel->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
-	m_pScoreLabel->setPosition(_contentSize.width - fLenght, _contentSize.height - fLenght);
+	m_pScoreLabel = Label::createWithBMFont(GOLDEN_SCORE_BMFNT, StringUtils::format("%d", m_nScore));
+	m_pScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	m_pScoreLabel->setPosition(gameBackgroundRect.size.width * 0.5f, gameBackgroundRect.size.height * 0.948f);
 	m_pScoreLabel->setColor(Color3B::WHITE);
-	m_pGameLayer->addChild(m_pScoreLabel);
+	pGameBackgroundSprite->addChild(m_pScoreLabel);
 	auto scoreLabelSize = m_pScoreLabel->getContentSize();
-	// 初始化玩家子弹的数量
-	m_pBombNumLabel = Label::createWithSystemFont(bailinText(StringUtils::format("子弹 : %d", m_nBombNum)), FNT_NAME, 50 / fScalingRatio);
-	m_pBombNumLabel->setAnchorPoint(Vec2::ANCHOR_TOP_RIGHT);
-	m_pBombNumLabel->setPosition(_contentSize.width - scoreLabelSize.width - 3 * fLenght, _contentSize.height - fLenght);
-	m_pGameLayer->addChild(m_pBombNumLabel);
-	// 初始化边界线
-	// 上边界线
-	auto pTopDraw = DrawNode::create();
-	pTopDraw->drawSolidRect(Vec2(0, _contentSize.height * 0.9),
-		Vec2(_contentSize.width, _contentSize.height * 0.9 + 10 / fScalingRatio), Color4F::RED);
-	m_pGameLayer->addChild(pTopDraw);
-	// 下边界
-	auto pButtonDraw = DrawNode::create();
-	pButtonDraw->drawSolidRect(Vec2(0, _contentSize.height * 0.1f),
-		Vec2(_contentSize.width, _contentSize.height * 0.1f - 10 / fScalingRatio), Color4F::RED);
-	m_pGameLayer->addChild(pButtonDraw);
+	handleScaleScoreLabel();
+	// 初始化玩家子弹的数量Label 
+	m_pBombNumLabel = Label::createWithBMFont(BLOCK_NUM_BMFNT, StringUtils::format("x%d", m_nBombNum));
+	m_pBombNumLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	auto pBombNumBackground = Sprite::create("res/BB_Bomb/Image/bb_bomb_background.png");
+	auto bombNumBackgroundSize = pBombNumBackground->getContentSize();
+	pBombNumBackground->setAnchorPoint(Vec2::ANCHOR_MIDDLE_LEFT);
+	pBombNumBackground->setPosition(0, interfaceSize.height * 0.95f);
+	m_pGameLayer->addChild(pBombNumBackground, 2);
+	// 添加子弹数量Label
+	m_pBombNumLabel->setPosition(bombNumBackgroundSize.width * 0.5f, bombNumBackgroundSize.height* 0.5f);
+	pBombNumBackground->addChild(m_pBombNumLabel);
 
+	// 创建边界
+	// 底边
+	auto pBottomBarSprite = Sprite::create("res/BB_Bomb/Image/bb_bar.png");
+	auto barSize = pBottomBarSprite->getContentSize();
+	pBottomBarSprite->setScale(_contentSize.width / barSize.width);
+	pBottomBarSprite->setAnchorPoint(Vec2::ANCHOR_TOP_LEFT);
+	// pBottomBarSprite->setPosition(0, interfaceSize.height * 0.130f);
+	pBottomBarSprite->setPosition(0, interfaceSize.height * SCREEN_BUTTOM_COFFICIENT);
+	m_pGameLayer->addChild(pBottomBarSprite);
+	// 上边
+	auto pTopBarSprite = Sprite::create("res/BB_Bomb/Image/bb_bar.png");
+	pTopBarSprite->setScale(_contentSize.width / barSize.width);
+	pTopBarSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE_LEFT);
+	// pTopBarSprite->setPosition(0, interfaceSize.height * 0.846f);
+	pTopBarSprite->setPosition(0, interfaceSize.height * SCREEN_TOP_COFFICIENT);
+	m_pGameLayer->addChild(pTopBarSprite);
+	// 创建按钮
 	createRecyclingBombButton();
 }
 
 void BB_GameScene::createBroundLine()
 {
+	auto pGameDeploy = GameDeploy::getInstance();
+	float fScalingRatio = pGameDeploy->getScalingRatio();
+	// 加粗刚体
+	float fLenght = 50 / fScalingRatio;
+	auto interfaceSize = pGameDeploy->getInterfaceSize();
 	// 上边
-	auto pTopBroundLine = PhysicsBody::createEdgeSegment(Vec2(0, _contentSize.height * 0.9f + 50),
-		Vec2(_contentSize.width, _contentSize.height * 0.9f + 50), PhysicsMaterial(0.0f, 1.0f, 0.0f), 50);
+	auto pTopBroundLine = PhysicsBody::createEdgeSegment(Vec2(0, interfaceSize.height * SCREEN_TOP_COFFICIENT + fLenght),
+		Vec2(interfaceSize.width, interfaceSize.height * SCREEN_TOP_COFFICIENT + fLenght), PhysicsMaterial(0.0f, 1.0f, 0.0f), fLenght);
 	pTopBroundLine->setDynamic(false);
 	// 设置遮掩码
 	pTopBroundLine->setCategoryBitmask(2);
@@ -296,8 +402,10 @@ void BB_GameScene::createBroundLine()
 	m_pGameLayer->addChild(pNodeTop);
 
 	// 左边
-	auto pLeftBroundLine = PhysicsBody::createEdgeSegment(Vec2(0, _contentSize.height * 0.1f),
-		Vec2(0, _contentSize.height * 0.9f), PhysicsMaterial(0.0f, 1.0f, 0.0f));
+	// auto pLeftBroundLine = PhysicsBody::createEdgeSegment(Vec2(0, interfaceSize.height * 0.13f),
+	// Vec2(0, interfaceSize.height * 0.846f), PhysicsMaterial(0.0f, 1.0f, 0.0f));
+	auto pLeftBroundLine = PhysicsBody::createEdgeSegment(Vec2(-fLenght, 0),
+		Vec2(-fLenght, interfaceSize.height * SCREEN_TOP_COFFICIENT), PhysicsMaterial(0.0f, 1.0f, 0.0f), fLenght);
 	// 设置遮掩码
 	pLeftBroundLine->setCategoryBitmask(2);
 	pLeftBroundLine->setContactTestBitmask(8);
@@ -309,8 +417,8 @@ void BB_GameScene::createBroundLine()
 	m_pGameLayer->addChild(pNodeLeft);
 
 	// 右边
-	auto pRightBroundLine = PhysicsBody::createEdgeSegment(Vec2(_contentSize.width, _contentSize.height * 0.1f),
-		Vec2(_contentSize.width, _contentSize.height * 0.9f), PhysicsMaterial(0.0f, 1.0f, 0.0f));
+	auto pRightBroundLine = PhysicsBody::createEdgeSegment(Vec2(interfaceSize.width + fLenght, 0),
+		Vec2(interfaceSize.width + fLenght, interfaceSize.height * SCREEN_TOP_COFFICIENT), PhysicsMaterial(0.0f, 1.0f, 0.0f), fLenght);
 	// 设置遮掩码
 	pRightBroundLine->setCategoryBitmask(2);
 	pRightBroundLine->setContactTestBitmask(8);
@@ -322,8 +430,8 @@ void BB_GameScene::createBroundLine()
 	m_pGameLayer->addChild(pNodeRight);
 
 	//// 下边
-	auto pBottomBroundLine = PhysicsBody::createEdgeSegment(Vec2(0, _contentSize.height * 0.1f),
-		Vec2(_contentSize.width, _contentSize.height * 0.1f), PhysicsMaterial(0.0f, 0.0f, 0.0f));
+	auto pBottomBroundLine = PhysicsBody::createEdgeSegment(Vec2(0, interfaceSize.height * SCREEN_BUTTOM_COFFICIENT),
+		Vec2(interfaceSize.width, interfaceSize.height * SCREEN_BUTTOM_COFFICIENT), PhysicsMaterial(0.0f, 0.0f, 0.0f));
 	// 设置遮掩码
 	pBottomBroundLine->setCategoryBitmask(2);
 	pBottomBroundLine->setContactTestBitmask(4);
@@ -345,30 +453,26 @@ void BB_GameScene::update(float dt)
 	}
 	// 获取游戏状态
 	auto gameStatus = GameStatusManager::getInstance()->getGameStatus();
-	if (gameStatus == GameStatusManager::GameStatus::kStatus_Result || gameStatus == GameStatusManager::GameStatus::kStatus_None)
+	if (gameStatus != GameStatusManager::GameStatus::kStatus_Result && gameStatus != GameStatusManager::GameStatus::kStatus_None)
 	{
-		return;
+		// 判断是否开启子弹回收按钮
+		if (gameStatus == GameStatusManager::GameStatus::kStatus_Runnning)
+		{
+			setRecyclingBombEnable(true);
+		}
+		else
+		{
+			setRecyclingBombEnable(false);
+		}
+		// 创建子弹
+		handleAddBomb();
+		// 发射子弹
+		handleShootBomb();
+		// 处理游戏背景数据
+		handleAddBackground();
+		// 处理屏幕屏幕内容下移动
+		handleRollScreen();
 	}
-	// 获取游戏配置
-	auto pGameDeploy = GameDeploy::getInstance();
-	int nBombLaunchTimer = pGameDeploy->getBombShootTimer();
-	// 判断是否开启子弹回收按钮
-	if (gameStatus == GameStatusManager::GameStatus::kStatus_Runnning)
-	{
-		setRecyclingBombEnable(true);
-	}
-	else
-	{
-		setRecyclingBombEnable(false);
-	}
-	// 创建子弹
-	handleAddBomb();
-	// 发射子弹
-	handleShootBomb();
-	// 处理游戏背景数据
-	handleAddBackground();
-	// 处理屏幕屏幕内容下移动
-	handleRollScreen();
 }
 
 void BB_GameScene::onTouchMoved(cocos2d::Touch* touch, cocos2d::Event* ev)
@@ -385,7 +489,9 @@ void BB_GameScene::onTouchEnded(cocos2d::Touch* touch, cocos2d::Event* ev)
 	auto fRadian = m_pFortNode->getArrowRadian();
 	// 判断是否有效的弧度
 	float fAngle = CC_RADIANS_TO_DEGREES(fRadian);
-	if (fAngle < 20.0f || fAngle > 160.0f)
+	// 获取极限角度
+	auto fLimitAngle = GameDeploy::getInstance()->getArrowLimitAngle();
+	if (fAngle < fLimitAngle || fAngle > 180 - fLimitAngle)
 	{
 		// 不符合射击角度不发射
 		return;
@@ -451,6 +557,7 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			auto nNum = random(0, 60);
 			CCLOG("nNum(%d)", nNum);
 			pParticleRatio->setStartColorVar(Color4F(getBlockColorWithNumer(nNum)));
+			pos = m_pGameLayer->convertToWorldSpace(pos);
 			pParticleRatio->setPosition(pos);
 			pParticleRatio->setCascadeColorEnabled(true);
 			pParticleRatio->setScale(1 / fScalingRatio);
@@ -458,10 +565,19 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			pParticleRatio->setAutoRemoveOnFinish(true);
 			addChild(pParticleRatio);
 		}
+		// 得分加一
+		m_nScore++;
+		m_pScoreLabel->setString(StringUtils::format("%d", m_nScore));
+		handleScaleScoreLabel();
 	}
 	break;
 	case BOUNDING_TAG_NUM:
 	{
+		if (contac.getContactData()->normal.y >= 0)
+		{
+			// 子弹从下往上穿不判断碰撞
+			return false;
+		}
 		m_nMoveBombNum--;
 		// 获取子弹管理类
 		auto pBombDataManager = BombDataManager::getInstance();
@@ -482,7 +598,7 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 		a->setEnable(false);
 #else
 		a->setEnabled(false);
-#endif;
+#endif
 		// 移动炮台
 		if (m_bMoveFort)
 		{
@@ -490,12 +606,16 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			auto pBombSprite = dynamic_cast<BombNode*>(pANode);
 			// 从飞行的子弹数组中删除这个子弹
 			pBombDataManager->removeFlyBombToVector(pBombSprite);
+			pBombSprite->setOpacity(0);
 			auto pos = a->getPosition();
-			auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio));
+			moveFort(pos.x);
+			// 获取炮台位置
+			auto fortPos = FortDataManager::getInstance()->getForPosition();
+			auto fortNodeSize = m_pFortNode->getContentSize();
+			auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, fortPos.y + fortNodeSize.height * 0.5f));
 			auto delayTime = DelayTime::create(0.1f);
 			auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
 			pBombSprite->runAction(seq);
-			moveFort(pos.x);
 			m_bMoveFort = false;
 		}
 		else
@@ -508,9 +628,15 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			pBombDataManager->removeFlyBombToVector(pBombNode);
 			if (pBombNode == nullptr)	break;
 			pBombNode->setBombStatus(BombNode::BombStatus::Status_MoveTo);
-			ActionInterval* pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio));
+			// 获取炮台位置
+			auto fortPos = FortDataManager::getInstance()->getForPosition();
+			auto fortNodeSize = m_pFortNode->getContentSize();
+			auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, fortPos.y + fortNodeSize.height * 0.5f));
+
+			// 创建一个动画结束回调函数
+			auto pFun = CallFuncN::create(CC_CALLBACK_1(BB_GameScene::hideBombCallBack, this, pBombNode));
 			auto delayTime = DelayTime::create(0.1f);
-			auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
+			auto seq = Sequence::create(delayTime, pMoveTo, pFun, nullptr);
 			pBombNode->runAction(seq);
 		}
 	}
@@ -529,11 +655,8 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 		m_pFoodNode->addChild(pFoodAnctionSprite, 20);
 		// 删除原来的食物
 		pFoodNode->reomveFoodNode();
-		// 得分加一
-		m_nScore++;
-		m_pScoreLabel->setString(StringUtils::format("score : %d", m_nScore));
 		// 子弹数量加一
-		m_pBombNumLabel->setString(bailinText(StringUtils::format("子弹 : %d", ++m_nBombNum)));
+		m_pBombNumLabel->setString(bailinText(StringUtils::format("x%d", ++m_nBombNum)));
 	}
 	break;
 	case BLACK_HOLE_TAG_NUM:
@@ -546,6 +669,12 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 		pBlockNode->hitted();
 		// 获取Block的Hp
 		auto nHp = pBlockNode->getBLockHp();
+
+		// 得分加一
+		m_nScore++;
+		m_pScoreLabel->setString(StringUtils::format("%d", m_nScore));
+		handleScaleScoreLabel();
+
 		if (nHp <= 0)
 		{
 			auto pos = pBlockNode->getPosition();
@@ -555,6 +684,7 @@ bool BB_GameScene::onContactBegin(cocos2d::PhysicsContact& contac)
 			auto nNum = random(0, 60);
 			pParticleRatio->setStartColorVar(Color4F(getBlockColorWithNumer(nNum)));
 			pParticleRatio->setPosition(pos);
+			pos = m_pGameLayer->convertToWorldSpace(pos);
 			pParticleRatio->setCascadeColorEnabled(true);
 			pParticleRatio->setScale(1 / fScalingRatio);
 			pParticleRatio->setLife(4);
@@ -593,9 +723,16 @@ void BB_GameScene::handleShootBomb()
 			auto bombSpeed = pFortDataManger->getBombSpeed();
 			if (m_nAlreadyShootBombNum < pFortDataManger->getBombSize())
 			{
-				// 获取炮台的位置
+				// FIXME: 这里在游戏结束最后的下降动画时操作炮台多点几下会在结算界面弹出后数组访问异常
 				auto pBombNode = vBomb[m_nAlreadyShootBombNum];
+				// 转移子弹到炮口
+				//auto fortTopPos = getFortTopPos();
+				//auto pMoveTo = MoveTo::create(0.01f, fortTopPos);
+				//pBombNode->runAction(pMoveTo);
+				//pBombNode->setPosition(fortTopPos);
+
 				pBombNode->setBombSpeed(bombSpeed);
+				pBombNode->setVisible(true);
 				pBombNode->setBombStatus(BombNode::BombStatus::Status_Move);
 				// 已经发射的子弹加一
 				m_nAlreadyShootBombNum++;
@@ -634,9 +771,12 @@ void BB_GameScene::handleAddBackground()
 
 void BB_GameScene::addBackgroundCallBack(cocos2d::Node* pNode)
 {
-	float fSize = BLOCK_SIZE / GameDeploy::getInstance()->getScalingRatio();
+	// 获取游戏配置
+	auto pGameDeploy = GameDeploy::getInstance();
+	auto interfaceSize = pGameDeploy->getInterfaceSize();
+	float fSize = BLOCK_SIZE;
 	pNode->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	pNode->setPositionY(_contentSize.height * 0.9f - fSize * 0.5f);
+	pNode->setPositionY(interfaceSize.height * 0.846f - fSize * 0.5f);
 	int nNum = pNode->getTag();
 	switch (nNum)
 	{
@@ -657,30 +797,39 @@ void BB_GameScene::addBackgroundCallBack(cocos2d::Node* pNode)
 void BB_GameScene::handleRollScreen()
 {
 	auto pGameStatus = GameStatusManager::getInstance();
+	bool bGameOver = true;
 	if (pGameStatus->getGameStatus() != GameStatusManager::GameStatus::kStatus_RollScreen)
 	{
 		return;
 	}
 	// 所有内容下移
-	float fSize = BLOCK_SIZE / GameDeploy::getInstance()->getScalingRatio();
+	float fSize = BLOCK_SIZE;
 	auto vBlock = m_pBlockNode->getChildren();
 	for (int i = 0; i < vBlock.size(); i++)
 	{
 		auto pBlockNode = vBlock.at(i);
+		auto xx = pBlockNode->getAnchorPoint();
 		auto blockPos = pBlockNode->getPosition();
 		float fY = blockPos.y - fSize;
 		auto pMoveTo = MoveTo::create(1, Vec2(blockPos.x, fY));
 		auto delayTime = DelayTime::create(0.5f);
-		auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
-		pBlockNode->runAction(seq);
-		if (fY <= _contentSize.height * SCREEN_BUTTOM_COFFICIENT)
+		if (fY - fSize*0.5f <= _contentSize.height * SCREEN_BUTTOM_COFFICIENT &&
+			pGameStatus->getGameStatus() != GameStatusManager::GameStatus::kStatus_Result)
 		{
-			// 游戏结束 
-			handleGameOver();
-			return;
+			// 改变游戏状态
+			pGameStatus->setGameStatus(GameStatusManager::GameStatus::kStatus_Result);
+			// 游戏结束 添加一个动作结束回调函数
+			CallFunc* pCallFunc = CallFunc::create(CC_CALLBACK_0(BB_GameScene::handleGameOver, this));
+			FiniteTimeAction*  pFiniteTimeAction = Sequence::create(delayTime, pMoveTo, pCallFunc, NULL);
+			pBlockNode->runAction(pFiniteTimeAction);
+			bGameOver = false;
+		}
+		else
+		{
+			auto seq = Sequence::create(delayTime, pMoveTo, nullptr);
+			pBlockNode->runAction(seq);
 		}
 	}
-
 	// 下移动黑洞
 	auto vBlackHole = m_pBlackHoleNode->getChildren();
 	for (int i = 0; i < vBlackHole.size(); i++)
@@ -714,8 +863,17 @@ void BB_GameScene::handleRollScreen()
 			pFoodNode->removeFromParent();
 		}
 	}
-	// 改变游戏状态
-	GameStatusManager::getInstance()->setGameStatus(GameStatusManager::GameStatus::kStatus_AddBomb);
+	// 如果游戏结束着不改变游戏状态
+	if (bGameOver)
+	{
+		// 改变游戏状态
+		GameStatusManager::getInstance()->setGameStatus(GameStatusManager::GameStatus::kStatus_None);
+		// 1.5秒后才能到下一阶段
+		auto pDelayTime = DelayTime::create(1.5f);
+		auto pCallFuncN = CallFuncN::create(CC_CALLBACK_1(BB_GameScene::setGameStatusCallBack, this, GameStatusManager::GameStatus::kStatus_AddBomb));
+		auto pSeq = Sequence::create(pDelayTime, pCallFuncN, NULL);
+		this->runAction(pSeq);
+	}
 }
 
 void BB_GameScene::handleAddBomb()
@@ -731,15 +889,18 @@ void BB_GameScene::handleAddBomb()
 	auto vBomb = pBombDataManager->getBombVector();
 	// 获取屏幕缩放比
 	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
+	// 获取炮台位置
 	auto pos = FortDataManager::getInstance()->getForPosition();
+	auto fortNodeSize = m_pFortNode->getContentSize();
 	// 创建子弹
 	for (int i = vBomb.size(); i < m_nBombNum; i++)
 	{
 		auto pBombSprite = BombDataManager::getInstance()->addBombNode();
-		pBombSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
-		pBombSprite->setPosition(pos.x, _contentSize.height * 0.1f + 20 / fScalingRatio);
+		pBombSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+		pBombSprite->setPosition(pos.x, pos.y + fortNodeSize.height * 0.5f);
 		pBombSprite->setBombSpeed(Vec2(0.0f, 0.0f));
 		m_pBombNode->addChild(pBombSprite);
+		pBombSprite->setVisible(false);
 	}
 
 	// 改为准备射击状态
@@ -760,29 +921,22 @@ void BB_GameScene::handleGameOver()
 {
 	clearPhysicsBody();
 	// 删除游戏界面
-	m_pGameLayer->removeFromParent();
 	// 改变游戏状态
 	GameStatusManager::getInstance()->setGameStatus(GameStatusManager::GameStatus::kStatus_Result);
 	// 获取游戏界面
 	float fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
+	auto interfaceSize = GameDeploy::getInstance()->getInterfaceSize();
 	// 显示结束界面
 	m_pGameOverLayer = LayerColor::create();
-	m_pGameOverLayer->setColor(Color3B::BLACK);
-	m_pGameOverLayer->setOpacity(0.4 * 255);
+	m_pGameOverLayer->setColor(Color3B::GRAY);
+	m_pGameOverLayer->setOpacity(0.5 * 255);
 	m_pGameOverLayer->ignoreAnchorPointForPosition(false);
 	m_pGameOverLayer->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
 	m_pGameOverLayer->setPosition(_contentSize * 0.5f);
 	addChild(m_pGameOverLayer, 2);
 
-	// 创建一个点击任意地方返回首页
-	auto pHomeMenu = Menu::create();
-	auto pHomeButton = MenuItemImage::create();
-	pHomeButton->setContentSize(_contentSize);
-	pHomeButton->setCallback(CC_CALLBACK_1(BB_GameScene::menuHomeCallBack, this));
-	pHomeMenu->addChild(pHomeButton);
-	m_pGameOverLayer->addChild(pHomeMenu);
-	auto pUserData = UserDataManager::getInstance();
 	// 检测是否打破记录
+	auto pUserData = UserDataManager::getInstance();
 	int nHistoryHighScore = pUserData->getHighScore();
 	if (nHistoryHighScore < m_nScore)
 	{
@@ -790,58 +944,59 @@ void BB_GameScene::handleGameOver()
 		nHistoryHighScore = m_nScore;
 	}
 
-	// 添加一个大的Block
-	auto pS9ScoreBoard = ui::Scale9Sprite::create("res/BB_Bomb/Image/bb_end_block.png");
-#if defined(SVB_VERTICAL_SCREEN)
-	pS9ScoreBoard->setPreferredSize(Size(_contentSize.width * 0.8f, _contentSize.width * 0.6f));
-	pS9ScoreBoard->setPosition(_contentSize.width * 0.5f, _contentSize.height * 0.6f);
-#else
-	pS9ScoreBoard->setPreferredSize(Size(_contentSize.height * 0.8f, _contentSize.height * 0.6f));
-	pS9ScoreBoard->setPosition(_contentSize.width * 0.5f, _contentSize.height * 0.57f);
-#endif
-	pS9ScoreBoard->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	m_pGameOverLayer->addChild(pS9ScoreBoard);
-	// 获取Board的尺寸
-	auto boardSize = pS9ScoreBoard->getContentSize();
+	// 结算界面背景
+	auto pSettlementSprite = Sprite::create("res/BB_Bomb/Image/bb_settlement.png");
+	auto settlementSize = pSettlementSprite->getContentSize();
+
+	pSettlementSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	pSettlementSprite->setScale(_contentSize.width * 0.8 / settlementSize.width);
+	pSettlementSprite->setPosition(_contentSize * 0.5f);
+	m_pGameOverLayer->addChild(pSettlementSprite);
+
 	// 显示玩家得分
-	auto pScoreLabel = Label::createWithSystemFont(StringUtils::format("%d", m_nScore), FNT_NAME, 250 / fScalingRatio);
-	pScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
-	pScoreLabel->setTextColor(Color4B::BLACK);
-	pScoreLabel->setPosition(boardSize.width * 0.5f, boardSize.height * 0.48f);
-	pS9ScoreBoard->addChild(pScoreLabel);
-	// 添加历史最高分前面的皇冠
-	auto pCrownSprite = Sprite::create("res/BB_Bomb/Image/bb_crown.png");
-	pCrownSprite->setAnchorPoint(Vec2::ANCHOR_BOTTOM_LEFT);
-	pCrownSprite->setColor(Color3B(255, 253, 16));
+	auto pScoreLabel = Label::createWithBMFont(GOLDEN_SCORE_BMFNT, StringUtils::format("%d", m_nScore));
+	float fScoreLabelScale = 1.5f;
+	pScoreLabel->setScale(fScoreLabelScale);
+	pScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	auto scoreLabelRect = pScoreLabel->getBoundingBox();
+	// 对分数进行缩放
+	while (scoreLabelRect.size.width + scoreLabelRect.size.height > interfaceSize.width * 0.663f)
+	{
+		fScoreLabelScale -= 0.01f;
+		pScoreLabel->setScale(fScoreLabelScale);
+		scoreLabelRect = pScoreLabel->getBoundingBox();
+	}
+	pScoreLabel->setPosition(settlementSize.width * 0.5f, settlementSize.height * 0.52f);
+	pSettlementSprite->addChild(pScoreLabel);
+
 	// 显示历史最高分
-	auto pHistorHighScoreLabel = Label::createWithSystemFont(StringUtils::format("%d", nHistoryHighScore), FNT_NAME, 100 / fScalingRatio);
-	pHistorHighScoreLabel->setAnchorPoint(Vec2::ANCHOR_MIDDLE_RIGHT);
-	pHistorHighScoreLabel->setTextColor(Color4B(255, 253, 16, 255));
-	// 获取皇冠的boundingBox
-	auto crownRect = pCrownSprite->getBoundingBox();
-	// 获取scoreLabel的boundingBox
-	auto scoreLabelRect = pHistorHighScoreLabel->getBoundingBox();
+	auto pHistorHighScoreLabel = Label::createWithSystemFont(bailinText(StringUtils::format("最高分  %d", nHistoryHighScore)), FNT_NAME, 35 / fScalingRatio);
+	pHistorHighScoreLabel->setTextColor(Color4B::WHITE);
+	auto HighScoreLabelRect = pHistorHighScoreLabel->getBoundingBox();
+	float highScoreLabelScale = 1.0f;
+	// 对历史最高分进行缩放
+	while (HighScoreLabelRect.size.width + HighScoreLabelRect.size.height > interfaceSize.width * 0.553f)
+	{
+		highScoreLabelScale -= 0.01f;
+		pHistorHighScoreLabel->setScale(fScoreLabelScale);
+		HighScoreLabelRect = pHistorHighScoreLabel->getBoundingBox();
+	}
+	pHistorHighScoreLabel->setPosition(settlementSize.width * 0.5f, settlementSize.height * 0.389f);
+	pSettlementSprite->addChild(pHistorHighScoreLabel);
 
-	// 添加输出分数弹框
-	auto pS9ScoreBomb = ui::Scale9Sprite::create("res/BB_Bomb/Image/bb_end_block.png");
-	auto fMarginX = 100 / fScalingRatio;
-	auto fMarginY = 30 / fScalingRatio;
-	auto fMarginCenter = 40 / fScalingRatio;
-	pS9ScoreBomb->setPreferredSize(Size(crownRect.size.width + scoreLabelRect.size.width +
-		fMarginCenter + 2 * fMarginX,
-		crownRect.size.height + 2 * fMarginY));
-	pS9ScoreBomb->setPosition(boardSize.width * 0.5f, boardSize.height * 0.09f);
-	pS9ScoreBomb->setAnchorPoint(Vec2::ANCHOR_MIDDLE_BOTTOM);
-	pS9ScoreBomb->setColor(Color3B::BLACK);
-	pS9ScoreBoard->addChild(pS9ScoreBomb);
+	// 创建返回首页的按钮
+	auto pHomeButtom = MenuItemImage::create("res/BB_Bomb/Image/bb_home_bottom.png", "res/BB_Bomb/Image/bb_home_bottom.png", CC_CALLBACK_1(BB_GameScene::menuHomeCallBack, this));
+	auto pFristSprite = pHomeButtom->getNormalImage();
+	auto fristSize = pFristSprite->getContentSize();
+	auto pLastSprite = pHomeButtom->getSelectedImage();
+	pLastSprite->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
+	pLastSprite->setScale(1.08f);
+	pLastSprite->setPosition(fristSize * 0.5f);
 
-	// 设置历史最高分Label的位置
-	pHistorHighScoreLabel->setPosition(pS9ScoreBomb->getBoundingBox().size.width - fMarginX,
-		crownRect.size.height * 0.5f + fMarginY);
-	pS9ScoreBomb->addChild(pHistorHighScoreLabel);
-	// 设置皇冠的位置
-	pCrownSprite->setPosition(10 / fScalingRatio + fMarginX, fMarginY);
-	pS9ScoreBomb->addChild(pCrownSprite);
+	auto pHomeMenu = Menu::create(pHomeButtom, nullptr);
+	pHomeMenu->setContentSize(Size(0, 0));
+	pHomeMenu->setPosition(settlementSize.width * 0.5f, settlementSize.height * 0.165f);
+	pSettlementSprite->addChild(pHomeMenu);
 
 	// 关闭update
 	// unscheduleUpdate();
@@ -849,6 +1004,8 @@ void BB_GameScene::handleGameOver()
 
 void BB_GameScene::menuHomeCallBack(cocos2d::Ref* spender)
 {
+	// 删除游戏界面
+	m_pGameLayer->removeFromParent();
 	// 删除结束界面的Layer 
 	m_pGameOverLayer->removeFromParent();
 	// 
@@ -917,6 +1074,7 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 	auto pos = pFortDataManager->getForPosition();
 	// 获取屏幕缩放比
 	auto fScalingRatio = GameDeploy::getInstance()->getScalingRatio();
+	auto fortSize = m_pFortNode->getContentSize();
 	for (auto i = 0; i < vFlyBomb.size(); i++)
 	{
 		auto pBombSprite = vFlyBomb[i];
@@ -926,8 +1084,12 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 #else
 		pBombSprite->getPhysicsBody()->setEnabled(false);
 #endif
-		auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, _contentSize.height * SCREEN_BUTTOM_COFFICIENT + 20 / fScalingRatio));
-		pBombSprite->runAction(pMoveTo);
+		auto pMoveTo = MoveTo::create(0.5f, Vec2(pos.x, pos.y + fortSize.height * 0.5f));
+		// 创建一个动画结束回调函数
+		auto pFun = CallFuncN::create(CC_CALLBACK_1(BB_GameScene::hideBombCallBack, this, pBombSprite));
+		auto delayTime = DelayTime::create(0.1f);
+		auto seq = Sequence::create(delayTime, pMoveTo, pFun, nullptr);
+		pBombSprite->runAction(seq);
 	}
 	m_nMoveBombNum = 0;
 	// 清空飞行Bomb数组数据
@@ -942,6 +1104,8 @@ void BB_GameScene::menuRecyclingBombCallBack(cocos2d::Ref* spender)
 
 void BB_GameScene::createRecyclingBombButton()
 {
+	// 获取界面有效尺寸
+	auto interfaceSize = GameDeploy::getInstance()->getInterfaceSize();
 	// 创建回收Bomb的按钮
 	m_pRecyclingButton = MenuItemImage::create("res/BB_Bomb/Image/bb_recycling_button.png", "res/BB_Bomb/Image/bb_recycling_button.png",
 		CC_CALLBACK_1(BB_GameScene::menuRecyclingBombCallBack, this));
@@ -950,14 +1114,13 @@ void BB_GameScene::createRecyclingBombButton()
 	auto size = pNode1->getContentSize();
 	auto pNode2 = m_pRecyclingButton->getSelectedImage();
 	pNode2->setAnchorPoint(Vec2::ANCHOR_MIDDLE);
-	pNode2->setScale(1.5f);
+	pNode2->setScale(1.1f);
 	pNode2->setPosition(size*0.5f);
 	auto menuRecycling = Menu::create(m_pRecyclingButton, NULL);
 	menuRecycling->setContentSize(Size(0, 0));
-	menuRecycling->setPosition(0, 0);
 	// 设置按钮位置
-	m_pRecyclingButton->setPosition(_contentSize.width - size.width*1.2f*0.5f, size.height *1.2f*0.5f);
-	m_pGameLayer->addChild(menuRecycling, 3);
+	menuRecycling->setPosition(interfaceSize.width - size.width * 1.1f * 0.5f, interfaceSize.height * 0.95f);
+	m_pGameLayer->addChild(menuRecycling, 2);
 	// 关闭按钮
 	setRecyclingBombEnable(false);
 }
@@ -994,11 +1157,12 @@ void BB_GameScene::handleBlackHoleBlack()
 		// 删除黑洞Blockk
 		pBlackHoleNode->removeFromParent();
 		// 添加粒子爆炸效果
-		// auto pParticleRatio = ParticleSystemQuad::create("res/BB_Bomb/particle/bb_black_hole_explode.plist");
 		auto pParticleRatio = ParticleSystemQuad::create("res/BB_Bomb/particle/bb_block_explode.plist");
 		auto nNum = random(0, 60);
 		pParticleRatio->setStartColorVar(Color4F(getBlockColorWithNumer(nNum)));
 		pParticleRatio->setPosition(pos);
+		// pos = m_pGameLayer->convertToWorldSpace(pos);
+		// pos = m_pGameLayer->convertToWorldSpace(pos);
 		pParticleRatio->setCascadeColorEnabled(true);
 		pParticleRatio->setScale(1 / fScalingRatio);
 		pParticleRatio->setLife(4);
@@ -1006,14 +1170,55 @@ void BB_GameScene::handleBlackHoleBlack()
 		m_pGameLayer->addChild(pParticleRatio);
 
 		auto pBombActuon = ActionFactoryNode::create(-1);
-		pBombActuon->setPosition(pos);
+		pBombActuon->setPosition(pos.x - BLOCK_SIZE*0.5f, pos.y);
 		m_pGameLayer->addChild(pBombActuon, 2);
 
 		// 删除子弹
 		pBombManager->removeBomb();
 		// 子弹数量减一
 		// 刷新子弹个数
-		m_nBombNum = FortDataManager::getInstance()->getBombSize();
-		m_pBombNumLabel->setString(bailinText(StringUtils::format("子弹 : %d", m_nBombNum)));
+		m_pBombNumLabel->setString(bailinText(StringUtils::format("子弹 : %d", --m_nBombNum)));
 	}
+}
+
+void BB_GameScene::hideBombCallBack(Ref* speder, BombNode* pBombNode)
+{
+	if (pBombNode == nullptr)
+	{
+		return;
+	}
+	pBombNode->setVisible(false);
+}
+
+
+
+void BB_GameScene::setGameStatusCallBack(cocos2d::Ref* spender, const GameStatusManager::GameStatus& eStatus)
+{
+	auto pGameStatua = GameStatusManager::getInstance();
+	if (pGameStatua == nullptr) return;
+
+	pGameStatua->setGameStatus(eStatus);
+}
+
+void BB_GameScene::handleScaleScoreLabel()
+{
+	if (m_pScoreLabel == nullptr) return;
+
+	// 获取屏幕有效尺寸
+	auto interfaceSize = GameDeploy::getInstance()->getInterfaceSize();
+	// 处理字体超出边宽范围缩小
+	auto scoreRect = m_pScoreLabel->getBoundingBox();
+	// 0.45 是按照显示框的根据屏幕的尺寸计算出来的
+	while (scoreRect.size.width + scoreRect.size.height > interfaceSize.width * 0.45f)
+	{
+		m_fScoreLabelScale -= 0.01f;
+		m_pScoreLabel->setScale(m_fScoreLabelScale);
+		scoreRect = m_pScoreLabel->getBoundingBox();
+	}
+}
+
+void BB_GameScene::onSaveGameScheduleCallBack(cocos2d::Ref* spender)
+{
+	// 回调 保存游戏
+	CCLOG("on onSaveGameScheduleCallBack");
 }

@@ -16,11 +16,15 @@ void GameDeploy::init()
 
 	// 初始化游戏数据
 	// 正常块块的生成概率
-	m_fNomeBlockAddProbaility = 25;
+	m_nCubeBlockAddProbaility = 320;
+	// 八角形块块的生成概率
+	m_nOctagonBlockGenerateRate = 110;
 	// 三角形块块生成概率
-	m_fTriangleBlockAddProBaility = 10;
+	m_nTriangleBlockAddProBaility = 120;
+	// 无块块生成概率
+	m_nNormalBlockProBaility = 700;
 	// 黑洞块块的生成概率
-	m_fBlackHoleBlockAddProBaility = 5;
+	m_nBlackHoleBlockAddProBaility = 40;
 	// Block的 生命值
 	m_nBlockHP = 1;
 	// 食物的生成概率
@@ -34,10 +38,13 @@ void GameDeploy::init()
 	// 箭头缩放比
 	m_fArrowScalingRatio = 20;
 	// 箭头的极限角度
-	m_fArrowLimitAngle = 20;
+	m_fArrowLimitAngle = 9;
 }
 
-
+int GameDeploy::getTotalRatio()
+{
+	return m_nCubeBlockAddProbaility + m_nOctagonBlockGenerateRate + m_nTriangleBlockAddProBaility + m_nBlackHoleBlockAddProBaility;
+}
 
 void GameDeploy::setScalingRatio(float fScalingRatio)
 {
@@ -49,9 +56,9 @@ float GameDeploy::getScalingRatio()
 	return m_fScalingRatio;
 }
 
-float GameDeploy::getAddNomeBlockProbaility()
+int GameDeploy::getAddCubeBlockProbaility()
 {
-	return m_fNomeBlockAddProbaility;
+	return m_nCubeBlockAddProbaility;
 }
 
 int GameDeploy::getBlockHP()
@@ -81,29 +88,36 @@ float GameDeploy::getMoveScalingRatio()
 
 float GameDeploy::getBombSpeed()
 {
-	return m_fBombSpeed;
+	return m_fBombSpeed / m_fScalingRatio;
 }
 
-float GameDeploy::getTriangleBlockAddProbaility()
+int GameDeploy::getTriangleBlockAddProbaility()
 {
-	return m_fTriangleBlockAddProBaility + m_fNomeBlockAddProbaility;
+	return m_nTriangleBlockAddProBaility;
 }
 
 
-float GameDeploy::getBlackHoleBlockAddProbaility()
+int GameDeploy::getNormalBlockProbaility()
 {
-	return m_fBlackHoleBlockAddProBaility + m_fTriangleBlockAddProBaility + m_fNomeBlockAddProbaility;
+	return m_nNormalBlockProBaility;
+}
+
+
+int GameDeploy::getOctagonBlockProbaility()
+{
+	return m_nOctagonBlockGenerateRate;
+}
+
+int GameDeploy::getBlackHoleBlockAddProbaility()
+{
+	return m_nBlackHoleBlockAddProBaility;
 }
 
 void GameDeploy::addGameDifficult()
 {
-	if (m_fNomeBlockAddProbaility > 45)
-	{
-		return;
-	}
-	m_fNomeBlockAddProbaility += 2;
-	m_fTriangleBlockAddProBaility += 1;
-
+	m_nBlackHoleBlockAddProBaility += 2;
+	m_nOctagonBlockGenerateRate += 3;
+	m_nTriangleBlockAddProBaility += 3;
 }
 
 void GameDeploy::setGameColumnNun(float fSize)
@@ -113,7 +127,7 @@ void GameDeploy::setGameColumnNun(float fSize)
 		// CCLOG("Error : setGameColunmNum = 0");
 		return;
 	}
-	m_nGameColumnNum = fSize / (BLOCK_SIZE / m_fScalingRatio);
+	m_nGameColumnNum = fSize / BLOCK_SIZE;
 }
 
 int GameDeploy::getGameColumnNum()
@@ -129,4 +143,14 @@ float GameDeploy::getArrowScalingRatio()
 float GameDeploy::getArrowLimitAngle()
 {
 	return m_fArrowLimitAngle;
+}
+
+void GameDeploy::setGameLayerSize(const cocos2d::Size& gameLayerSize)
+{
+	m_gameLayerSize = gameLayerSize;
+}
+
+const cocos2d::Size& GameDeploy::getInterfaceSize()
+{
+	return m_gameLayerSize;
 }
