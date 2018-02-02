@@ -1,5 +1,8 @@
 ﻿#include "BombDataManager.h"
 #include "FortDataManager.h"
+#include "cocos2d.h"
+USING_NS_CC;
+
 
 static BombDataManager* s_global = nullptr;
 BombDataManager* BombDataManager::getInstance()
@@ -18,6 +21,7 @@ void BombDataManager::init()
 
 	// 清空数据
 	m_vBombNode.clear();
+	m_vFlyBombNode.clear();
 
 }
 
@@ -31,7 +35,7 @@ BombNode* BombDataManager::addBombNode()
 	auto pBombNode = BombNode::create();
 	m_vBombNode.push_back(pBombNode);
 	// 子弹总数量加一
-	FortDataManager::getInstance()->addBombSize(1);
+	FortDataManager::getInstance()->setBombSize(1);
 	return pBombNode;
 }
 
@@ -60,4 +64,24 @@ void BombDataManager::clearFlyBomb()
 const std::vector<BombNode* >& BombDataManager::getFlyBombVector()
 {
 	return m_vFlyBombNode;
+}
+
+void BombDataManager::removeBomb(int nNum /*= 1*/)
+{
+	if (m_vBombNode.size() <= nNum)
+	{
+		return;
+	}
+	for (int i = 0; i < nNum; i++)
+	{
+		auto iter = m_vBombNode.begin();
+
+		// 延迟1 秒删除场景中的子弹
+		auto pDelayTime = DelayTime::create(1);
+		(*iter)->stopAllActions();
+		(*iter)->removeFromParent();
+		m_vBombNode.erase(iter);
+	}
+	// 删除炮台管理类中的子弹个数
+	FortDataManager::getInstance()->setBombSize(-nNum);
 }

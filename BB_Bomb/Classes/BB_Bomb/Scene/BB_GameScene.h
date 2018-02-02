@@ -2,23 +2,18 @@
 #define __BB_GAME_SCENE_H__
 #include "cocos2d.h"
 #include "../UI/FortNode.h"
+#include "../UI/BombNode.h"
+#include "../../bailinUtils/DialogLayer.h"
+#include "../Manager/GameStatusManager.h"
 
 // 游戏开始事件名  
 #define START_GAME_EVENT  "StartGameEvent" 
 // 添加子弹事件名称
 #define ADD_BOMB_EVENT "add bomb"
 // 屏幕下边界系数
-#define SCREEN_BUTTOM_COFFICIENT 0.1f
+#define SCREEN_BUTTOM_COFFICIENT 0.0968f
 // 屏幕上边界系数
-#define  SCREEN_TOP_COFFICIENT 0.9f
-
-// 字体
-#if defined(CC_PLATFORM_IOS) || defined(CC_PLATFORM_MAC)
-#   define FNT_NAME "Helvetica Bold"
-#else
-#   define FNT_NAME "Arial"
-#endif
-
+#define  SCREEN_TOP_COFFICIENT 0.916f
 
 class BB_GameScene : cocos2d::Scene
 {
@@ -57,6 +52,14 @@ private:
 	*/
 	void menuStartCallBack(cocos2d::Ref* spender);
 	/*
+	* @brief 排行榜按钮回调函数
+	*/
+	void menuRankingCallBack(cocos2d::Ref* spender);
+	/*
+	* @brief 游戏帮助按钮回调
+	*/
+	void menuHelpCallBack(cocos2d::Ref* spender);
+	/*
 	* @brief 返回主界面回调函数
 	*/
 	void menuHomeCallBack(cocos2d::Ref* spender);
@@ -64,6 +67,14 @@ private:
 	* @brief 回收飞行中的子弹
 	*/
 	void menuRecyclingBombCallBack(cocos2d::Ref* spender);
+	/*
+	* @brief 动画结束回调隐藏子弹,
+	*/
+	void hideBombCallBack(cocos2d::Ref* spender, BombNode* pBombNode);
+	/*
+	* @brief 回调改变游戏状态
+	*/
+	void setGameStatusCallBack(cocos2d::Ref* spender, const GameStatusManager::GameStatus& eStatus);
 private:
 	/*
 	* @brief 游戏开始事件调用 初始话游戏数据
@@ -90,6 +101,10 @@ private:
 	*/
 	bool onContactBegin(cocos2d::PhysicsContact& contac);
 	/*
+	* @brief 对玩家分数Label进行缩放
+	*/
+	void handleScaleScoreLabel();
+	/*
 	* @brief 创建背景回调函数
 	*/
 	void addBackgroundCallBack(cocos2d::Node* pNode);
@@ -98,6 +113,10 @@ private:
 	* @brief 初始化首页的Layer
 	*/
 	void initHomeLayer();
+	/*
+	* @brief 添加首页背景元素
+	*/
+	void addHomeBackground();
 	/*
 	* @brief 创建游戏提示sprite
 	*/
@@ -109,6 +128,10 @@ private:
 	* @brief 处理子弹的发射
 	*/
 	void handleShootBomb();
+	/*
+	* @brief 获取炮口在主界面的位置, 在handleShootBomb()中调用
+	*/
+	const cocos2d::Vec2& getFortTopPos();
 	/*
 	* @brief 处理Block的生成
 	*/
@@ -125,6 +148,10 @@ private:
 	* @brief 游戏结束调用函数
 	*/
 	void handleGameOver();
+	/*
+	* @brief 处理黑洞Block
+	*/
+	void handleBlackHoleBlack();
 	/*
 	* @brief 清除刚体
 	*/
@@ -146,12 +173,16 @@ private:
 	cocos2d::Node* m_pBlockNode = nullptr;
 	// 添加食物的Node
 	cocos2d::Node* m_pFoodNode = nullptr;
+	// 添加黑洞Block的Node
+	cocos2d::Node* m_pBlackHoleNode = nullptr;
 	// 得分的Label
 	cocos2d::Label* m_pScoreLabel = nullptr;
+	// 玩家子弹的数量
+	cocos2d::Label* m_pBombNumLabel = nullptr;
 	// 回收子弹的按钮
 	cocos2d::MenuItemImage* m_pRecyclingButton = nullptr;
 	// 游戏结算Layer
-	cocos2d::Layer* m_pGameOverLayer = nullptr;
+	bailin::ui::DialogLayer::Layer* m_pGameOverLayer = nullptr;
 	// 触摸监听器
 	cocos2d::EventListenerTouchOneByOne* m_pEventListenerTouch = nullptr;
 private:
@@ -169,6 +200,10 @@ private:
 	int m_nAlreadyShootBombNum;
 	// 判断是否要移动炮台
 	bool m_bMoveFort;
+	// 子弹的数量
+	int m_nBombNum;
+	// 得分Label的缩放比例
+	float m_fScoreLabelScale;
 };
 
 

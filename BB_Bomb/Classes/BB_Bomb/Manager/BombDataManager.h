@@ -32,7 +32,11 @@ public:
 	* @brief 获取飞行中Bomb的数组
 	*/
 	const std::vector<BombNode* >& getFlyBombVector();
-
+	/*
+	* @brief 删除子弹
+	* @param 删除子弹的个数
+	*/
+	void removeBomb(int nNum = 1);
 private:
 	// 所有的子弹
 	std::vector<BombNode* > m_vBombNode;

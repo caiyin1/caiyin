@@ -41,6 +41,10 @@ public:
 	* @brief 获取子弹的状态
 	*/
 	const BombNode::BombStatus& getBombStatus();
+	/*
+	* @brief 是否隐藏子弹
+	*/
+	void setEnableBomb(bool b);
 private:
 	cocos2d::Sprite* m_pBombSprite = nullptr;
 	// 子弹刚体

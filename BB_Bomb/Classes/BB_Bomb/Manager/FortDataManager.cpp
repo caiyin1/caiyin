@@ -54,7 +54,7 @@ int FortDataManager::getBombSize()
 	return m_nBombSize;
 }
 
-void FortDataManager::addBombSize(int nNum /*= 1*/)
+void FortDataManager::setBombSize(int nNum /*= 1*/)
 {
 	m_nBombSize += nNum;
 }

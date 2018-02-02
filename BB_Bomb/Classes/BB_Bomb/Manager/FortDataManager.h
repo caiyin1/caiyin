@@ -31,7 +31,7 @@ public:
 	/*
 	* @brief 子弹数量加一
 	*/
-	void addBombSize(int nNum = 1);
+	void setBombSize(int nNum = 1);
 	/*
 	* @brief 记录发射的弧度
 	*/

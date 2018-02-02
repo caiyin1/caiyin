@@ -1,9 +1,8 @@
 ﻿#ifndef __BLOCK_NODE_H__
-#define __BlOCK_NODE_H__
+#define __BLOCK_NODE_H__
 #include "cocos2d.h"
 #include "../StructData/BlockData.h"
 
-#define NUM_FILE "res/BB_Bomb/bmFnt/BB_num.fnt"
 class BlockNode : public cocos2d::Node
 {
 public:
@@ -19,15 +18,19 @@ public:
 	* @brief 获取Block的HP
 	*/
 	int getBLockHp();
+	/*
+	* @brief 获取Block的类别
+	*/
+	BlockData::Type getBlockType();
 private:
 	/*
-	* @brief 创建3角形刚体
+	* @brief 创建黑洞
 	*/
-	void initTriangle(int nNum, cocos2d::Size blockSize);
+	void initBlackHole();
 	/*
-	* @brief 处理三角形旋转和填加Hp位置
+	* @brief 设置Block的tag
 	*/
-	void handleTriangle(int nNum);
+	void setBlockTag(int nNum);
 private:
 	BlockData m_BlockData;
 	cocos2d::Sprite* m_pBlockSprite = nullptr;

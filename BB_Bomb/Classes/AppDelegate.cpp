@@ -1,6 +1,5 @@
 ﻿#include "AppDelegate.h"
 #include "BB_Bomb/Scene/BB_GameScene.h"
-#include "HelloWorldScene.h"
 
 
 // #define USE_AUDIO_ENGINE 1
@@ -19,12 +18,8 @@ using namespace CocosDenshion;
 #endif
 
 USING_NS_CC;
-#if defined(SVB_VERTICAL_SCREEN)
-static cocos2d::Size designResolutionSize = cocos2d::Size(1080, 1920);
-#else
-static cocos2d::Size designResolutionSize = cocos2d::Size(1920, 1080);
-#endif
 
+static cocos2d::Size designResolutionSize = cocos2d::Size(640, 1136);
 
 AppDelegate::AppDelegate()
 {
@@ -62,17 +57,9 @@ bool AppDelegate::applicationDidFinishLaunching() {
 	auto glview = director->getOpenGLView();
 	if (!glview) {
 #if (CC_TARGET_PLATFORM == CC_PLATFORM_WIN32)  || (CC_TARGET_PLATFORM == CC_PLATFORM_LINUX)
-#if defined(SVB_VERTICAL_SCREEN)
-		glview = GLViewImpl::createWithRect("BB_Bomb", cocos2d::Rect(0, 0, 540, 960));
-#else
-		glview = GLViewImpl::createWithRect("BB_Bomb", cocos2d::Rect(0, 0, 960, 540));
-#endif
+		glview = GLViewImpl::createWithRect("BB_Bomb", cocos2d::Rect(0, 0, 320, 568));
 #elif CC_TARGET_PLATFORM == CC_PLATFORM_MAC
-#if defined(SVB_VERTICAL_SCREEN)
-		glview = GLViewImpl::createWithRect("BB_Bomb", cocos2d::Rect(0, 0, 360, 720));
-#else
-		glview = GLViewImpl::createWithRect("BB_Bomb", cocos2d::Rect(0, 0, 720, 360));
-#endif
+		glview = GLViewImpl::createWithRect("BB_Bomb", cocos2d::Rect(0, 0, 320, 568));
 #else
 		glview = GLViewImpl::create("BB_Bomb");
 #endif
@@ -93,11 +80,7 @@ bool AppDelegate::applicationDidFinishLaunching() {
 
 	glview->setDesignResolutionSize(frameSize.width, frameSize.height, ResolutionPolicy::SHOW_ALL);
 
-#if defined(SVB_VERTICAL_SCREEN)
 	director->setContentScaleFactor(designResolutionSize.width / frameSize.width);
-#else
-	director->setContentScaleFactor(designResolutionSize.height / frameSize.height);
-#endif
 	//if (frameSize.width / frameSize.height > designResolutionSize.width / designResolutionSize.height)
 	//{
 	//	director->setContentScaleFactor(designResolutionSize.height / frameSize.height);
