@@ -21,6 +21,10 @@ public:
 	*/
 	void addFlyBombToVector(BombNode* pBombNode);
 	/*
+	*  @brief 获取飞行中子弹数组
+	*/
+	const std::vector<BombNode*>& getFlyBombVector();
+	/*
 	* @brief 删除飞行的子弹
 	*/
 	void removeFlyBombToVector(BombNode* pBombNode);
@@ -28,10 +32,6 @@ public:
 	* @brief 重置飞行子弹数组的数据
 	*/
 	void clearFlyBomb();
-	/*
-	* @brief 获取飞行中Bomb的数组
-	*/
-	const std::vector<BombNode* >& getFlyBombVector();
 	/*
 	* @brief 删除子弹
 	* @param 删除子弹的个数

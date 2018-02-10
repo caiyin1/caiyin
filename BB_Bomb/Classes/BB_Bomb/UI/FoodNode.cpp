@@ -28,7 +28,7 @@ bool FoodNode::initWithData(const FoodData& foodData)
 		case FoodData::FoodType::kType_AddBomb:
 		{
 			// 创建食物
-			m_pFoodSprite = Sprite::create("res/BB_Bomb/Image/BB_addFood.png");
+			m_pFoodSprite = Sprite::create("res/BB_Bomb/Image/balls/default.png");
 			auto foodSize = m_pFoodSprite->getContentSize();
 			// 创建一个刚体
 			m_pFoodBody = PhysicsBody::createCircle(foodSize.width * 0.5f,
@@ -72,4 +72,9 @@ void FoodNode::setBodyEnabled(bool b)
 #else
 	m_pFoodBody->setEnabled(b);
 #endif
+}
+
+const FoodData::FoodType& FoodNode::getFoodType()
+{
+	return m_data.m_eFoodType;
 }

@@ -33,11 +33,21 @@ private:
 	* @brief 锁死射击角度
 	*/
 	void handleShootAngle(float fAngle);
+	/*
+	* @brief 判断是否可以发射子弹
+	*/
+	bool judgeShoot(cocos2d::Vect pos);
+	/*
+	* @brief 设置炮台锚点
+	*/
+	void setFortAnchorPoint();
 private:
 	cocos2d::Sprite* m_pFortSprite = nullptr;
 	cocos2d::Sprite* m_pArrowSprite = nullptr;
 	cocos2d::Sprite* m_pDottedLineSprite = nullptr;
 	cocos2d::Sprite* m_pButtonSprite = nullptr;
+	// 是否可以发射提示圈
+	cocos2d::Sprite* m_pPromptRingSprite = nullptr;
 	// 记录创建箭头时鼠标的位置
 	cocos2d::Point m_beginPos;
 	// 计算角度时的对比向量

@@ -26,7 +26,7 @@ bool ActionFactoryNode::initWith(int nNum)
 		auto pGameDeploy = GameDeploy::getInstance();
 		auto fScalingRatio = pGameDeploy->getScalingRatio();
 		// 创建食物
-		auto pFoodSprite = Sprite::create("res/BB_Bomb/Image/bb_addFood.png");
+		auto pFoodSprite = Sprite::create("res/BB_Bomb/Image/balls/default.png");
 		auto size = pFoodSprite->getContentSize();
 		pFoodSprite->setPosition(size * 0.5f);
 
@@ -38,11 +38,11 @@ bool ActionFactoryNode::initWith(int nNum)
 		// 添加得分的Label 
 		if (nNum > 0)
 		{
-			pSocerLabel = Label::createWithSystemFont(StringUtils::format(" +%d", nNum), FNT_NAME, 30 / fScalingRatio);
+			pSocerLabel = Label::createWithBMFont(BLOCK_NUM_BMFNT, StringUtils::format(" +%d", nNum));
 		}
 		else
 		{
-			pSocerLabel = Label::createWithSystemFont(StringUtils::format(" %d", nNum), FNT_NAME, 30 / fScalingRatio);
+			pSocerLabel = Label::createWithBMFont(BLOCK_NUM_BMFNT, StringUtils::format(" %d", nNum));
 		}
 		auto labelSize = pSocerLabel->getContentSize();
 		pSocerLabel->setPosition(_contentSize.width + labelSize.width*0.5f + 0 / fScalingRatio, _contentSize.height * 0.5f);

@@ -17,6 +17,11 @@ public:
 	* @Brief 食物是否关闭刚体
 	*/
 	void setBodyEnabled(bool b);
+	/*
+	* @brief 获取食物属性
+	*/
+	const FoodData::FoodType& getFoodType();
+
 private:
 	cocos2d::Sprite* m_pFoodSprite = nullptr;
 	// 食物的刚体

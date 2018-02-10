@@ -24,14 +24,20 @@ void FortDataManager::init()
 void FortDataManager::setBombSpeed(const float& fAngle)
 {
 	// 根据弧度 返回一个标准向量
-	auto standardVector = ccpForAngle(fAngle);
+    auto standardVector = Vec2::forAngle(fAngle);
 	// 返回向量的的长度
-	auto fLength = ccpLength(standardVector);
+	auto fLength = standardVector.getLength();
 	// 获取子弹的原始速度
 	float fSpeed = GameDeploy::getInstance()->getBombSpeed();
 	float fScaling = fSpeed / fLength * 1.0f;
-	m_bombSpeed = ccpMult(standardVector, fScaling);
+	m_bombSpeed = standardVector * fScaling;
 	m_bombSpeed.x = -m_bombSpeed.x;
+}
+
+
+void FortDataManager::setBombSpeed(const cocos2d::Vec2& speed)
+{
+	m_bombSpeed = speed;
 }
 
 const cocos2d::Vec2& FortDataManager::getBombSpeed()

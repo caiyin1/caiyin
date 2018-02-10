@@ -21,6 +21,7 @@ void BombDataManager::init()
 
 	// 清空数据
 	m_vBombNode.clear();
+	m_vFlyBombNode.clear();
 
 }
 

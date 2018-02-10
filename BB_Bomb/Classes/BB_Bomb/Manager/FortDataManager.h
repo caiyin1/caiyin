@@ -12,6 +12,7 @@ public:
 	* @brief 设置子弹速度
 	*/
 	void setBombSpeed(const float& fAngle);
+	void setBombSpeed(const cocos2d::Vec2& speed);
 	/*
 	* @brief 获取子弹速度
 	*/

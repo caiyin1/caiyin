@@ -23,6 +23,15 @@ public:
 	* @brief 重置数据
 	*/
 	void clear();
+	/*
+	* @brief 获取已经生成的子弹个数
+	*/
+	int getFoodSize();
+	/*
+	* @brief 设置已经生成子弹的个数
+	*/
+	void setFoodSize(int nNum);
+
 private:
 	std::function<void(cocos2d::Node*)> m_callbackAddBackground = nullptr;
 	//  已经生成的食物个数

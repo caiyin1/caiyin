@@ -15,6 +15,14 @@ public:
 	* @brief 设置历史最高分
 	*/
 	void setHighScore(int nScore);
+	/*
+	* @brief 设置玩家本局得分
+	*/
+	void setPlayerScore(int nScore);
+	/*
+	* @brief 获取玩家本局得分
+	*/
+	int getPlayerScore();
 private:
 	/*
 	* @brief  从磁盘中载入用户数据
@@ -26,6 +34,8 @@ private:
 	void saveData();
 private:
 	int m_nHighScore;
+	// 玩家本局得分
+	int m_nScore;
 
 };
 #endif // !__USER_DATA_MANAGER_H__

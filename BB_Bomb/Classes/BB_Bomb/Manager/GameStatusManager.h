@@ -14,6 +14,7 @@ public:
 		kStatus_Result,				// 结束状态
 		kStatus_AddBack,			// 创建背景数据状态
 		kStatus_RollScreen,			// 滚动屏幕状态
+		kStatus_WaitMoveEnd,		// 等待动画结束状态
 		kStatus_AddBomb,			// 添加子弹状态
 		kStatus_Pause				// 暂停状态
 	};
